@@ -8,7 +8,6 @@ require 'set'
 require 'openssl'
 require 'base64'
 require 'securerandom'
-require 'rack/protection/encrypted_cookie'
 require 'net/smtp'
 require 'sequel'
 
@@ -67,8 +66,9 @@ rescue => e
 end
 
 enable :method_override
-disable :sessions
-use Rack::Protection::EncryptedCookie, secret: (ENV['SESSION_SECRET'] || SecureRandom.hex(32)), old_secret: nil
+enable :sessions
+set :session_secret, ENV['SESSION_SECRET'] || SecureRandom.hex(32)
+set :session_expire_after, 86400 * 7
 
 ADMIN_EMAIL = 'pcyasuic@ideiasti.com'
 
@@ -78,7 +78,7 @@ unless User[ADMIN_EMAIL]
   key_len = 32
   default_hash = OpenSSL::PKCS5.pbkdf2_hmac('admin123', salt, iter, key_len, 'SHA256')
   User.create(
-    id: SecureRandom.uuid, username: 'Admin',
+    username: 'Admin',
     email: ADMIN_EMAIL, admin: true,
     password_hash: "#{salt}:#{iter}:#{Base64.strict_encode64(default_hash)}",
     created_at: Time.now
@@ -329,7 +329,7 @@ post '/register/:token' do
   pwd_hash = hash_password(password)
   token_data.update(used: true)
   User.create(
-    id: SecureRandom.uuid, username: username, email: token_data[:email],
+    username: username, email: token_data[:email],
     password_hash: pwd_hash, created_at: Time.now
   )
   session[:notice] = 'Conta criada com sucesso! Faça seu login.'

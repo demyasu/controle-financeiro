@@ -35,7 +35,6 @@ namespace :db do
       key_len = 32
       hash = OpenSSL::PKCS5.pbkdf2_hmac(admin_password, salt, iter, key_len, 'SHA256')
       User.create(
-        id: SecureRandom.uuid,
         email: admin_email,
         username: 'Admin',
         admin: true,

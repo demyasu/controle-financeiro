@@ -1,9 +1,16 @@
 require 'sequel'
 require 'dotenv/load'
 
-DATABASE_URL = ENV['DATABASE_URL'] || ENV['DB_URL'] || "postgres://#{ENV['DB_USER'] || 'postgres'}:#{ENV['DB_PASSWORD'] || 'postgres'}@#{ENV['DB_HOST'] || 'localhost'}:#{ENV['DB_PORT'] || 5432}/#{ENV['DB_NAME'] || 'controle_financeiro'}"
+database_url = ENV['DATABASE_URL'] || ENV['DB_URL'] || begin
+  user = ENV['DB_USER'] || 'postgres'
+  pass = ENV['DB_PASSWORD'] || 'postgres'
+  host = ENV['DB_HOST'] || 'localhost'
+  port = ENV['DB_PORT'] || 5432
+  name = ENV['DB_NAME'] || 'controle_financeiro'
+  "postgres://#{user}:#{pass}@#{host}:#{port}/#{name}"
+end
 
-DB = Sequel.connect(DATABASE_URL)
+DB = Sequel.connect(database_url)
 
 Sequel.extension :migration
 Sequel::Migrator.run(DB, File.join(__dir__, '..', 'db', 'migrations'))
