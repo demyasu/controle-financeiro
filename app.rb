@@ -1,6 +1,5 @@
 require 'sinatra'
 require 'dotenv/load'
-require 'pstore'
 require 'date'
 require 'write_xlsx'
 require 'tempfile'
@@ -11,8 +10,23 @@ require 'base64'
 require 'securerandom'
 require 'rack/protection/encrypted_cookie'
 require 'net/smtp'
+require 'sequel'
 
-# ─── SMTP CONFIG ──────────────────────────────────────
+require_relative 'config/database'
+
+class User < Sequel::Model(:users)
+end
+
+class Transaction < Sequel::Model(:transactions)
+  serialize_attributes :json, :paid_installments
+end
+
+class RegToken < Sequel::Model(:reg_tokens)
+end
+
+class LoginToken < Sequel::Model(:login_tokens)
+end
+
 SMTP_CONFIG = {
   server:   ENV['SMTP_SERVER']   || 'smtp.office365.com',
   port:     (ENV['SMTP_PORT']    || 587).to_i,
@@ -56,64 +70,23 @@ enable :method_override
 disable :sessions
 use Rack::Protection::EncryptedCookie, secret: (ENV['SESSION_SECRET'] || SecureRandom.hex(32)), old_secret: nil
 
-# PStore database
-DB = PStore.new('db/transactions.pstore')
-
-# Initialize DB
-unless File.exist?('db/transactions.pstore')
-  DB.transaction do
-    DB[:transactions] = {}
-    DB[:next_id] = 1
-    DB[:export_seq] = 0
-  end
-end
-
-# Migrate: ensure user_email on all transactions
-DB.transaction do
-  transactions = DB[:transactions] || {}
-  updated = false
-  transactions.each do |id, t|
-    if t.is_a?(Hash)
-      unless t.key?(:paid_installments)
-        t[:paid_installments] = []
-        t[:status] = 'Pendente' unless t.key?(:status)
-        updated = true
-      end
-      unless t.key?(:user_email)
-        t[:user_email] = 'pcyasuic@ideiasti.com'
-        updated = true
-      end
-    end
-  end
-  DB[:export_seq] = 0 unless DB[:export_seq]
-  DB[:transactions] = transactions if updated
-end
-
-# Ensure admin user exists
 ADMIN_EMAIL = 'pcyasuic@ideiasti.com'
-DB.transaction do
-  users = DB[:users] || {}
-  if users[ADMIN_EMAIL]
-    users[ADMIN_EMAIL][:admin] = true
-  else
-    require 'securerandom'
-    require 'openssl'
-    require 'base64'
-    salt = SecureRandom.hex(16)
-    iter = 100_000
-    key_len = 32
-    default_hash = OpenSSL::PKCS5.pbkdf2_hmac('admin123', salt, iter, key_len, 'SHA256')
-    users[ADMIN_EMAIL] = {
-      id: SecureRandom.uuid, username: 'Admin',
-      email: ADMIN_EMAIL, admin: true,
-      password_hash: "#{salt}:#{iter}:#{Base64.strict_encode64(default_hash)}",
-      created_at: Time.now
-    }
-  end
-  DB[:users] = users
+
+unless User[ADMIN_EMAIL]
+  salt = SecureRandom.hex(16)
+  iter = 100_000
+  key_len = 32
+  default_hash = OpenSSL::PKCS5.pbkdf2_hmac('admin123', salt, iter, key_len, 'SHA256')
+  User.create(
+    id: SecureRandom.uuid, username: 'Admin',
+    email: ADMIN_EMAIL, admin: true,
+    password_hash: "#{salt}:#{iter}:#{Base64.strict_encode64(default_hash)}",
+    created_at: Time.now
+  )
+else
+  User.where(email: ADMIN_EMAIL).update(admin: true)
 end
 
-# Helper methods
 def format_currency(value)
   return 'R$ 0,00' if value.nil? || value == 0
   "R$ #{format('%.2f', value).gsub('.', ',')}"
@@ -142,15 +115,18 @@ def current_user_email
   session[:user_email]
 end
 
+def current_user
+  @current_user ||= User[session[:user_email]] if session[:user_email]
+end
+
 def admin?
-  user = DB.transaction(true) { DB[:users][session[:user_email]] }
+  user = current_user
   user && user[:admin]
 end
 
 def get_user_transactions(user_email = nil)
-  all = get_all_transactions
-  return all if user_email.nil?
-  all.select { |t| t[:user_email] == user_email }
+  ds = Transaction.order(Sequel.desc(:transaction_date))
+  user_email ? ds.where(user_email: user_email).all : ds.all
 end
 
 def get_my_transactions
@@ -158,106 +134,63 @@ def get_my_transactions
 end
 
 def get_all_users
-  DB.transaction(true) do
-    users = DB[:users] || {}
-    users.values.sort_by { |u| u[:created_at] || Time.now }
-  end
+  User.order(:created_at).all
 end
 
 def get_all_transactions
-  DB.transaction(true) do
-    transactions = DB[:transactions] || {}
-    result = []
-    transactions.each do |id, t|
-      next unless t.is_a?(Hash)
-      t[:status] = 'Pendente' unless t.key?(:status)
-      t[:id] = id unless t.key?(:id)
-      result << t
-    end
-    result.sort do |a, b|
-      begin
-        date_a = normalize_date(a[:transaction_date])
-        date_b = normalize_date(b[:transaction_date])
-        date_b <=> date_a
-      rescue
-        (a[:id] || 0) <=> (b[:id] || 0)
-      end
-    end
-  end
+  Transaction.order(Sequel.desc(:transaction_date)).all
 end
 
 def get_transaction(id)
-  DB.transaction(true) do
-    transactions = DB[:transactions] || {}
-    transactions[id]
-  end
+  Transaction[id]
 end
 
 def save_transaction(data)
-  DB.transaction do
-    transactions = DB[:transactions] || {}
-    next_id = DB[:next_id] || 1
-
-    transaction = {
-      id: next_id,
-      transaction_date: data[:transaction_date],
-      description: data[:description],
-      amount: data[:amount],
-      transaction_type: data[:transaction_type],
-      category: data[:category],
-      payment_method: data[:payment_method],
-      financing_type: data[:financing_type],
-      installments: data[:installments],
-      due_date: data[:due_date],
-      bank: data[:bank],
-      card_name: data[:card_name],
-      status: data[:status] || 'Pendente',
-      user_email: data[:user_email] || current_user_email,
-      paid_installments: [],
-      created_at: Time.now,
-      updated_at: Time.now
-    }
-
-    transactions[next_id] = transaction
-    DB[:transactions] = transactions
-    DB[:next_id] = next_id + 1
-    transaction
-  end
+  Transaction.create(
+    transaction_date: data[:transaction_date],
+    description: data[:description],
+    amount: data[:amount],
+    transaction_type: data[:transaction_type],
+    category: data[:category],
+    payment_method: data[:payment_method],
+    financing_type: data[:financing_type],
+    installments: data[:installments],
+    due_date: data[:due_date],
+    bank: data[:bank],
+    card_name: data[:card_name],
+    status: data[:status] || 'Pendente',
+    user_email: data[:user_email] || current_user_email,
+    created_at: Time.now,
+    updated_at: Time.now
+  )
 end
 
 def update_transaction(id, data)
-  DB.transaction do
-    transactions = DB[:transactions] || {}
-    if transactions[id]
-      transactions[id][:transaction_date] = data[:transaction_date] if data.key?(:transaction_date)
-      transactions[id][:description] = data[:description] if data.key?(:description)
-      transactions[id][:amount] = data[:amount] if data.key?(:amount)
-      transactions[id][:transaction_type] = data[:transaction_type] if data.key?(:transaction_type)
-      transactions[id][:category] = data[:category] if data.key?(:category)
-      transactions[id][:payment_method] = data[:payment_method] if data.key?(:payment_method)
-      transactions[id][:financing_type] = data[:financing_type] if data.key?(:financing_type)
-      transactions[id][:installments] = data[:installments] if data.key?(:installments)
-      transactions[id][:due_date] = data[:due_date] if data.key?(:due_date)
-      transactions[id][:bank] = data[:bank] if data.key?(:bank)
-      transactions[id][:card_name] = data[:card_name] if data.key?(:card_name)
-      transactions[id][:status] = data[:status] if data.key?(:status)
-      transactions[id][:income_type] = data[:income_type] if data.key?(:income_type)
-      transactions[id][:updated_at] = Time.now
-      DB[:transactions] = transactions
-    end
-    transactions[id]
-  end
+  t = Transaction[id]
+  return nil unless t
+  updates = {}
+  updates[:transaction_date] = data[:transaction_date] if data.key?(:transaction_date)
+  updates[:description] = data[:description] if data.key?(:description)
+  updates[:amount] = data[:amount] if data.key?(:amount)
+  updates[:transaction_type] = data[:transaction_type] if data.key?(:transaction_type)
+  updates[:category] = data[:category] if data.key?(:category)
+  updates[:payment_method] = data[:payment_method] if data.key?(:payment_method)
+  updates[:financing_type] = data[:financing_type] if data.key?(:financing_type)
+  updates[:installments] = data[:installments] if data.key?(:installments)
+  updates[:due_date] = data[:due_date] if data.key?(:due_date)
+  updates[:bank] = data[:bank] if data.key?(:bank)
+  updates[:card_name] = data[:card_name] if data.key?(:card_name)
+  updates[:status] = data[:status] if data.key?(:status)
+  updates[:income_type] = data[:income_type] if data.key?(:income_type)
+  updates[:updated_at] = Time.now
+  t.update(updates) unless updates.empty?
+  t
 end
 
 def delete_transaction(id)
-  DB.transaction do
-    transactions = DB[:transactions] || {}
-    transactions.delete(id)
-    DB[:transactions] = transactions
-  end
+  Transaction[id]&.destroy
 end
 
-# ─── AUTH HELPERS ───────────────────────────────────
 def hash_password(password)
   salt = SecureRandom.hex(16)
   iter = 100_000
@@ -282,14 +215,6 @@ def generate_code
   format('%06d', rand(1_000_000))
 end
 
-# Initialize auth data
-DB.transaction do
-  DB[:users] ||= {}
-  DB[:reg_tokens] ||= {}
-  DB[:login_tokens] ||= {}
-end
-
-# ─── BEFORE FILTERS ────────────────────────────────
 before do
   @notice = session.delete(:notice) if session[:notice]
   @error = session.delete(:error) if session[:error]
@@ -302,7 +227,6 @@ before do
   redirect '/login'
 end
 
-# ─── AUTH ROUTES ────────────────────────────────────
 get '/login' do
   redirect '/' if session[:user_email]
   erb :login
@@ -311,16 +235,14 @@ end
 post '/authenticate' do
   email = params[:email].to_s.strip.downcase
   password = params[:password].to_s
-  user = DB.transaction(true) { DB[:users][email] }
+  user = User[email]
   unless user && verify_password(password, user[:password_hash])
     @error = 'Email ou senha inválidos'
     return erb :login
   end
   code = generate_code
   token = generate_token
-  DB.transaction do
-    DB[:login_tokens][token] = { email: email, code: code, created_at: Time.now, used: false }
-  end
+  LoginToken.create(token: token, email: email, code: code, created_at: Time.now, used: false)
   send_email(
     to: email,
     subject: 'Seu código de verificação',
@@ -335,9 +257,9 @@ end
 
 post '/verify_token' do
   redirect '/login' unless session[:pending_token]
-  token_data = DB.transaction(true) { DB[:login_tokens][session[:pending_token]] }
+  token_data = LoginToken[session[:pending_token]]
   if token_data && !token_data[:used] && token_data[:code] == params[:code].to_s.strip
-    DB.transaction { DB[:login_tokens][session[:pending_token]][:used] = true }
+    token_data.update(used: true)
     session[:user_email] = token_data[:email]
     session.delete(:pending_token)
     session[:notice] = 'Login realizado com sucesso!'
@@ -354,15 +276,12 @@ end
 
 post '/register' do
   email = params[:email].to_s.strip.downcase
-  existing = DB.transaction(true) { DB[:users][email] }
-  if existing
+  if User[email]
     @error = 'Este email já está cadastrado'
     return erb :register
   end
   token = generate_token
-  DB.transaction do
-    DB[:reg_tokens][token] = { email: email, created_at: Time.now, used: false }
-  end
+  RegToken.create(token: token, email: email, created_at: Time.now, used: false)
   reg_link = "#{request.base_url}/register/#{token}"
   send_email(
     to: email,
@@ -376,7 +295,7 @@ post '/register' do
 end
 
 get '/register/:token' do
-  token_data = DB.transaction(true) { DB[:reg_tokens][params[:token]] }
+  token_data = RegToken[params[:token]]
   if token_data.nil? || token_data[:used]
     @error = 'Link inválido ou expirado'
     return erb :register
@@ -387,7 +306,7 @@ get '/register/:token' do
 end
 
 post '/register/:token' do
-  token_data = DB.transaction(true) { DB[:reg_tokens][params[:token]] }
+  token_data = RegToken[params[:token]]
   if token_data.nil? || token_data[:used]
     @error = 'Link inválido ou expirado'
     return erb :register
@@ -408,13 +327,11 @@ post '/register/:token' do
     return erb :set_password
   end
   pwd_hash = hash_password(password)
-  DB.transaction do
-    DB[:reg_tokens][params[:token]][:used] = true
-    DB[:users][token_data[:email]] = {
-      id: SecureRandom.uuid, username: username, email: token_data[:email],
-      password_hash: pwd_hash, created_at: Time.now
-    }
-  end
+  token_data.update(used: true)
+  User.create(
+    id: SecureRandom.uuid, username: username, email: token_data[:email],
+    password_hash: pwd_hash, created_at: Time.now
+  )
   session[:notice] = 'Conta criada com sucesso! Faça seu login.'
   redirect '/login'
 end
@@ -424,36 +341,30 @@ get '/logout' do
   redirect '/login'
 end
 
-# ─── ROUTES ─────────────────────────────────────────
+def can_modify?(t)
+  t && (t[:user_email] == current_user_email || admin?)
+end
+
 post '/transactions/:id/toggle_installment' do
-  DB.transaction do
-    transactions = DB[:transactions] || {}
-    id = params[:id].to_i
-    t = transactions[id]
-    next unless t && (t[:user_email] == current_user_email || admin?)
-    installment = params[:installment].to_i
+  t = Transaction[params[:id].to_i]
+  if t && (t[:user_email] == current_user_email || admin?)
     paid = t[:paid_installments] || []
+    installment = params[:installment].to_i
     if paid.include?(installment)
       paid.delete(installment)
     else
       paid << installment
     end
-    t[:paid_installments] = paid
-    t[:updated_at] = Time.now
-    DB[:transactions] = transactions
+    t.update(paid_installments: paid, updated_at: Time.now)
   end
   redirect back
 end
 
 post '/transactions/:id/toggle_status' do
-  DB.transaction do
-    transactions = DB[:transactions] || {}
-    id = params[:id].to_i
-    t = transactions[id]
-    next unless t && (t[:user_email] == current_user_email || admin?)
-    t[:status] = t[:status] == 'Pago' ? 'Pendente' : 'Pago'
-    t[:updated_at] = Time.now
-    DB[:transactions] = transactions
+  t = Transaction[params[:id].to_i]
+  if t && (t[:user_email] == current_user_email || admin?)
+    new_status = t[:status] == 'Pago' ? 'Pendente' : 'Pago'
+    t.update(status: new_status, updated_at: Time.now)
   end
   redirect back
 end
@@ -484,7 +395,7 @@ get '/' do
 
   if params[:start_date] && params[:end_date]
     date_range = (@start_date..@end_date)
-    @transactions = @transactions.select { |t| date_range.include?(t[:transaction_date]) }
+    @transactions = @transactions.select { |t| t[:transaction_date] && date_range.include?(t[:transaction_date]) }
   end
 
   @total_gastos = @transactions.select { |t| ['Gasto', 'Financiamento', 'Crédito Parcelado', 'Pix Parcelado'].include?(t[:transaction_type]) }.sum { |t| t[:amount] }
@@ -499,10 +410,6 @@ end
 
 get '/new' do
   erb :new
-end
-
-def can_modify?(t)
-  t && (t[:user_email] == current_user_email || admin?)
 end
 
 post '/transactions' do
@@ -575,12 +482,12 @@ get '/dashboard' do
     (t[:transaction_type] == 'Gasto' && t[:category] == 'Financiamento') ||
     ['Financiamento', 'Crédito Parcelado', 'Pix Parcelado', 'Crédito à Vista'].include?(t[:transaction_type])
   end
-  
+
   @upcoming = []
   @total_paid = 0.0
   @total_remaining = 0.0
   today = Date.today
-  
+
   @debts.each do |debt|
     amount = debt[:amount].to_f
     paid_installments = debt[:paid_installments] || []
@@ -616,7 +523,7 @@ get '/dashboard' do
       else
         @total_remaining += amount unless is_paid
       end
-      @upcoming << debt.merge(
+      @upcoming << debt.values.merge(
         current_installment: 1,
         installments: 1,
         is_paid: is_paid,
@@ -625,7 +532,7 @@ get '/dashboard' do
     else
       is_paid = paid_installments.include?(1)
       @total_remaining += amount unless is_paid
-      @upcoming << debt.merge(
+      @upcoming << debt.values.merge(
         due_date: nil,
         is_paid: is_paid,
         vencimento_status: 'Sem vencimento',
@@ -634,7 +541,7 @@ get '/dashboard' do
       )
     end
   end
-  
+
   @upcoming.sort_by! do |d|
     normalize_date(d[:due_date])
   end
@@ -648,18 +555,15 @@ get '/export' do
     start_date = Date.parse(params[:start_date])
     end_date = Date.parse(params[:end_date])
     date_range = (start_date..end_date)
-    @transactions = @transactions.select { |t| date_range.include?(t[:transaction_date]) }
+    @transactions = @transactions.select { |t| t[:transaction_date] && date_range.include?(t[:transaction_date]) }
   end
 
-  # Gerar XLSX
   tempfile = Tempfile.new(['transacoes', '.xlsx'])
-  tempfile.close  # Close the file handle to avoid permission issues
+  tempfile.close
   workbook = WriteXLSX.new(tempfile.path)
-  
-  # Aba principal
+
   worksheet = workbook.add_worksheet('Transações')
 
-  # Formatação
   header_format = workbook.add_format(
     bg_color: '#4472C4',
     color: 'white',
@@ -668,52 +572,31 @@ get '/export' do
     border: 1,
     border_color: '#000000'
   )
-  data_format = workbook.add_format(
-    align: 'left'
-  )
-  currency_format = workbook.add_format(
-    align: 'right',
-    num_format: 'R$ #,##0.00'
-  )
-  date_format = workbook.add_format(
-    align: 'center',
-    num_format: 'dd/mm/yyyy'
-  )
-  datetime_format = workbook.add_format(
-    align: 'center',
-    num_format: 'dd/mm/yyyy hh:mm:ss'
-  )
+  data_format = workbook.add_format(align: 'left')
+  currency_format = workbook.add_format(align: 'right', num_format: 'R$ #,##0.00')
+  date_format = workbook.add_format(align: 'center', num_format: 'dd/mm/yyyy')
+  datetime_format = workbook.add_format(align: 'center', num_format: 'dd/mm/yyyy hh:mm:ss')
 
-  # Configurar impressão
   worksheet.print_area('A1:O' + (@transactions.size + 5).to_s)
   worksheet.fit_to_pages(1, 0)
   worksheet.set_margins(0.5)
-  worksheet.hide_gridlines(0)  # Show gridlines
+  worksheet.hide_gridlines(0)
 
-  # Cabeçalho principal
   title_format = workbook.add_format(
-    bold: true,
-    size: 18,
-    align: 'center',
-    bg_color: '#4472C4',
-    color: 'white',
-    border: 2,
-    border_color: '#000000'
+    bold: true, size: 18, align: 'center',
+    bg_color: '#4472C4', color: 'white',
+    border: 2, border_color: '#000000'
   )
   worksheet.merge_range('A1:O1', '🍀 PcYasuic Soluções Financeira', title_format)
   worksheet.set_row(0, 30)
 
-  # Cabeçalhos das colunas
   headers = ['ID', 'Data', 'Descrição', 'Valor Total', 'Valor Parcela', 'Tipo', 'Categoria', 'Método de Pagamento', 'Tipo de Financiamento', 'Parcelas', 'Vencimento', 'Banco/Cartão', 'Status', 'Data de Criação', 'Data de Atualização']
   headers.each_with_index do |header, index|
     worksheet.write(1, index, header, header_format)
   end
   worksheet.set_row(1, 20)
-
-  # Filtros
   worksheet.autofilter('A2:O' + (@transactions.size + 2).to_s)
 
-  # Dados
   total_gastos = 0.0
   total_creditos = 0.0
   seen_ids = Set.new
@@ -767,7 +650,6 @@ get '/export' do
     end
   end
 
-  # Linha de total
   total_row = row
   worksheet.write(total_row, 2, 'TOTAL GASTOS', header_format)
   worksheet.write(total_row, 3, total_gastos, currency_format)
@@ -776,7 +658,6 @@ get '/export' do
   worksheet.write(total_row + 2, 2, 'SALDO', header_format)
   worksheet.write(total_row + 2, 3, total_creditos - total_gastos, currency_format)
 
-  # Ajustar largura das colunas
   worksheet.set_column('A:A', 5)
   worksheet.set_column('B:B', 12)
   worksheet.set_column('C:C', 30)
@@ -793,12 +674,10 @@ get '/export' do
   worksheet.set_column('N:N', 20)
   worksheet.set_column('O:O', 20)
 
-  # Aba de Resumo
   summary_sheet = workbook.add_worksheet('Resumo')
-  summary_sheet.write(0, 0, 'Resumo Financeiro', title_format)
   summary_sheet.merge_range('A1:B1', 'Resumo Financeiro', title_format)
   summary_sheet.set_row(0, 30)
-  
+
   summary_format = workbook.add_format(bold: true, align: 'left')
   summary_sheet.write(2, 0, 'Total Gastos:', summary_format)
   summary_sheet.write(2, 1, total_gastos, currency_format)
@@ -806,18 +685,25 @@ get '/export' do
   summary_sheet.write(3, 1, total_creditos, currency_format)
   summary_sheet.write(4, 0, 'Saldo:', summary_format)
   summary_sheet.write(4, 1, total_creditos - total_gastos, currency_format)
-  
+
   summary_sheet.set_column('A:A', 20)
   summary_sheet.set_column('B:B', 15)
 
   workbook.close
-  export_seq = DB.transaction do
-    seq = DB[:export_seq] || 0
-    seq += 1
-    DB[:export_seq] = seq
-    seq
+
+  seq = DB.transaction do
+    row = DB[:app_metadata].for_update.first(key: 'export_seq')
+    if row
+      new_val = row[:value] + 1
+      DB[:app_metadata].where(key: 'export_seq').update(value: new_val)
+      new_val
+    else
+      DB[:app_metadata].insert(key: 'export_seq', value: 1)
+      1
+    end
   end
-  filename = "transacoes_#{Date.today.strftime('%d%m%Y')}_#{export_seq}.xlsx"
+
+  filename = "transacoes_#{Date.today.strftime('%d%m%Y')}_#{seq}.xlsx"
   send_file tempfile.path, filename: filename, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   File.delete(tempfile.path) rescue nil
 end
