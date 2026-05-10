@@ -26,6 +26,13 @@ end
 class LoginToken < Sequel::Model(:login_tokens)
 end
 
+configure do
+  migration_dir = File.join(__dir__, 'db', 'migrations')
+  if Dir.exist?(migration_dir)
+    Sequel::Migrator.run(DB, migration_dir)
+  end
+end
+
 SMTP_CONFIG = {
   server:   ENV['SMTP_SERVER']   || 'smtp.office365.com',
   port:     (ENV['SMTP_PORT']    || 587).to_i,
