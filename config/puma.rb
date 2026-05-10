@@ -3,5 +3,3 @@ threads threads_count, threads_count
 
 port        ENV.fetch('PORT', 8080)
 environment ENV.fetch('RACK_ENV', 'production')
-
-single_mode
