@@ -1,0 +1,103 @@
+<h1>Nova Transação</h1>
+<form action="/transactions" method="post">
+  <div class="mb-3">
+    <label class="form-label">Tipo de Transação</label>
+    <select class="form-select" name="transaction_type" id="transaction_type" required>
+      <option value="expense">Gasto</option>
+      <option value="income">Crédito</option>
+    </select>
+  </div>
+
+  <div id="expense_fields">
+    <div class="mb-3">
+      <label class="form-label">Informe os gastos</label>
+      <input type="text" class="form-control brl-currency" name="amount" placeholder="R$ 0,00" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a data do gasto</label>
+      <input type="date" class="form-control" name="transaction_date" value="<%= Date.today.strftime('%Y-%m-%d') %>" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a descrição do gasto</label>
+      <input type="text" class="form-control" name="description" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Categoria</label>
+      <select class="form-select" name="category" id="category_select">
+        <option value="Alimentacao">Alimentação</option>
+        <option value="Gastos com carro">Gastos com carro</option>
+        <option value="Gastos com animais">Gastos com animais</option>
+        <option value="Gastos com criancas">Gastos com crianças</option>
+        <option value="Academia">Academia</option>
+        <option value="Compra mensal">Compra mensal</option>
+        <option value="Agua">Água</option>
+        <option value="Energia">Energia</option>
+        <option value="Gas">Gás</option>
+        <option value="Telefone">Telefone</option>
+        <option value="Celular">Celular</option>
+        <option value="Internet">Internet</option>
+        <option value="Uber">Uber</option>
+        <option value="Taxi">Táxi</option>
+        <option value="Outro">Outro (personalizado)</option>
+      </select>
+      <input type="text" class="form-control mt-2" name="custom_category" id="custom_category" placeholder="Digite a categoria personalizada" style="display: none;">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Forma de Pagamento</label>
+      <select class="form-select" name="payment_method">
+        <option value="dinheiro">Dinheiro</option>
+        <option value="debito">Débito</option>
+        <option value="credito">Cartão de Crédito</option>
+        <option value="vale_alimentacao">Vale Alimentação</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="income_fields" style="display: none;">
+    <div class="mb-3">
+      <label class="form-label">Informe o crédito</label>
+      <input type="text" class="form-control brl-currency" name="income_amount" placeholder="R$ 0,00">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Tipo de Crédito</label>
+      <select class="form-select" name="income_type">
+        <option value="salary">Salário Mensal</option>
+        <option value="extra_income">Ganho Extra</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a data do crédito</label>
+      <input type="date" class="form-control" name="income_date" value="<%= Date.today.strftime('%Y-%m-%d') %>">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a descrição do crédito</label>
+      <input type="text" class="form-control" name="income_description">
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Salvar</button>
+  <a href="/" class="btn btn-secondary">Cancelar</a>
+</form>
+
+<script>
+  document.getElementById('transaction_type').addEventListener('change', function() {
+    const expenseFields = document.getElementById('expense_fields');
+    const incomeFields = document.getElementById('income_fields');
+    if (this.value === 'expense') {
+      expenseFields.style.display = 'block';
+      incomeFields.style.display = 'none';
+      expenseFields.querySelectorAll('[name="amount"], [name="transaction_date"], [name="description"]').forEach(el => el.required = true);
+      incomeFields.querySelectorAll('[name="income_amount"], [name="income_date"], [name="income_description"]').forEach(el => el.required = false);
+    } else {
+      expenseFields.style.display = 'none';
+      incomeFields.style.display = 'block';
+      expenseFields.querySelectorAll('[name="amount"], [name="transaction_date"], [name="description"]').forEach(el => el.required = false);
+      incomeFields.querySelectorAll('[name="income_amount"], [name="income_date"], [name="income_description"]').forEach(el => el.required = true);
+    }
+  });
+
+  document.getElementById('category_select').addEventListener('change', function() {
+    const customField = document.getElementById('custom_category');
+    customField.style.display = this.value === 'Outro' ? 'block' : 'none';
+  });
+</script>

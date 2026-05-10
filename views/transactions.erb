@@ -1,0 +1,98 @@
+<h1>Todas as Transações</h1>
+
+<form method="get" class="row g-3 mb-4">
+  <div class="col-md-3">
+    <label class="form-label">Data Inicial</label>
+    <input type="date" class="form-control" name="start_date" value="<%= @period_start.strftime('%Y-%m-%d') %>">
+  </div>
+  <div class="col-md-3">
+    <label class="form-label">Data Final</label>
+    <input type="date" class="form-control" name="end_date" value="<%= @period_end.strftime('%Y-%m-%d') %>">
+  </div>
+  <div class="col-md-2 align-self-end">
+    <button type="submit" class="btn btn-primary">Filtrar</button>
+  </div>
+  <div class="col-md-2 align-self-end">
+    <a href="/export/csv?start_date=<%= @period_start.strftime('%Y-%m-%d') %>&end_date=<%= @period_end.strftime('%Y-%m-%d') %>" class="btn btn-success">Exportar CSV</a>
+  </div>
+</form>
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Total Gastos</h5>
+        <p class="card-text display-6 text-danger">R$ <%= to_brl(@total_expenses) %></p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Total Créditos</h5>
+        <p class="card-text display-6 text-success">R$ <%= to_brl(@total_income) %></p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">Balanço</h5>
+        <p class="card-text display-6 <%= @balance >= 0 ? 'text-success' : 'text-danger' %>">
+          R$ <%= to_brl(@balance) %>
+          (<%= @balance >= 0 ? 'Positivo' : 'Negativo' %>)
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Descrição</th>
+      <th>Tipo</th>
+      <th>Categoria</th>
+      <th>Forma de Pagamento</th>
+      <th>Valor</th>
+      <th>Ações</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @transactions.each do |t| %>
+      <tr>
+        <td><%= Date.parse(t[:transaction_date]).strftime('%d/%m/%Y') %></td>
+        <td><%= t[:description] %></td>
+        <td><%= t[:transaction_type] == 'income' ? 'Crédito' : 'Gasto' %></td>
+        <td>
+          <% if t[:transaction_type] == 'income' %>
+            <%= t[:income_type] == 'salary' ? 'Salário Mensal' : 'Ganho Extra' %>
+          <% else %>
+            <%= t[:category] || 'Sem categoria' %>
+          <% end %>
+        </td>
+        <td>
+          <% if t[:transaction_type] == 'expense' && t[:payment_method] %>
+            <%= case t[:payment_method]
+                when 'dinheiro' then 'Dinheiro'
+                when 'debito' then 'Débito'
+                when 'credito' then 'Cartão de Crédito'
+                when 'vale_alimentacao' then 'Vale Alimentação'
+                else t[:payment_method]
+                end %>
+          <% else %>
+            -
+          <% end %>
+        </td>
+        <td>R$ <%= to_brl(t[:amount]) %></td>
+        <td>
+          <a href="/transactions/<%= t[:id] %>/edit" class="btn btn-sm btn-warning">Editar</a>
+          <form action="/transactions/<%= t[:id] %>/delete" method="post" style="display: inline;">
+            <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Tem certeza?')">Excluir</button>
+          </form>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

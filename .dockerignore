@@ -1,0 +1,9 @@
+.env
+.git
+.gitignore
+tmp/
+server.log
+*.pstore
+nul
+DOCUMENTACAO_TECNICA.md
+TECHNICAL_DOCS.md

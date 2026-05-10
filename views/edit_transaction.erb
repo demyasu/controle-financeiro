@@ -1,0 +1,100 @@
+<h1>Editar Transação</h1>
+<form action="/transactions/<%= @transaction[:id] %>" method="post">
+  <input type="hidden" name="_method" value="patch">
+  <div class="mb-3">
+    <label class="form-label">Tipo de Transação</label>
+    <select class="form-select" name="transaction_type" id="transaction_type" required>
+      <option value="expense" <%= @transaction[:transaction_type] == 'expense' ? 'selected' : '' %>>Gasto</option>
+      <option value="income" <%= @transaction[:transaction_type] == 'income' ? 'selected' : '' %>>Crédito</option>
+    </select>
+  </div>
+
+  <div id="expense_fields">
+    <div class="mb-3">
+      <label class="form-label">Informe os gastos</label>
+      <input type="text" class="form-control brl-currency" name="amount" placeholder="R$ 0,00" value="R$ <%= to_brl(@transaction[:amount]) %>" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a data do gasto</label>
+      <input type="date" class="form-control" name="transaction_date" value="<%= @transaction[:transaction_date] %>" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a descrição do gasto</label>
+      <input type="text" class="form-control" name="description" value="<%= @transaction[:description] %>" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Categoria</label>
+      <select class="form-select" name="category" id="category_select">
+        <option value="Alimentacao" <%= @transaction[:category] == 'Alimentacao' ? 'selected' : '' %>>Alimentação</option>
+        <option value="Gastos com carro" <%= @transaction[:category] == 'Gastos com carro' ? 'selected' : '' %>>Gastos com carro</option>
+        <option value="Gastos com animais" <%= @transaction[:category] == 'Gastos com animais' ? 'selected' : '' %>>Gastos com animais</option>
+        <option value="Gastos com criancas" <%= @transaction[:category] == 'Gastos com criancas' ? 'selected' : '' %>>Gastos com crianças</option>
+        <option value="Academia" <%= @transaction[:category] == 'Academia' ? 'selected' : '' %>>Academia</option>
+        <option value="Compra mensal" <%= @transaction[:category] == 'Compra mensal' ? 'selected' : '' %>>Compra mensal</option>
+        <option value="Agua" <%= @transaction[:category] == 'Agua' ? 'selected' : '' %>>Água</option>
+        <option value="Energia" <%= @transaction[:category] == 'Energia' ? 'selected' : '' %>>Energia</option>
+        <option value="Gas" <%= @transaction[:category] == 'Gas' ? 'selected' : '' %>>Gás</option>
+        <option value="Telefone" <%= @transaction[:category] == 'Telefone' ? 'selected' : '' %>>Telefone</option>
+        <option value="Celular" <%= @transaction[:category] == 'Celular' ? 'selected' : '' %>>Celular</option>
+        <option value="Internet" <%= @transaction[:category] == 'Internet' ? 'selected' : '' %>>Internet</option>
+        <option value="Uber" <%= @transaction[:category] == 'Uber' ? 'selected' : '' %>>Uber</option>
+        <option value="Taxi" <%= @transaction[:category] == 'Taxi' ? 'selected' : '' %>>Táxi</option>
+        <option value="Outro">Outro (personalizado)</option>
+      </select>
+      <input type="text" class="form-control mt-2" name="custom_category" id="custom_category" placeholder="Digite a categoria personalizada" value="<%= @transaction[:category] if !['Alimentacao', 'Gastos com carro', 'Gastos com animais', 'Gastos com criancas', 'Academia', 'Compra mensal', 'Agua', 'Energia', 'Gas', 'Telefone', 'Celular', 'Internet', 'Uber', 'Taxi'].include?(@transaction[:category]) %>" style="display: <%= ['Alimentacao', 'Gastos com carro', 'Gastos com animais', 'Gastos com criancas', 'Academia', 'Compra mensal', 'Agua', 'Energia', 'Gas', 'Telefone', 'Celular', 'Internet', 'Uber', 'Taxi'].include?(@transaction[:category]) ? 'none' : 'block' %>;">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Forma de Pagamento</label>
+      <select class="form-select" name="payment_method">
+        <option value="dinheiro" <%= @transaction[:payment_method] == 'dinheiro' ? 'selected' : '' %>>Dinheiro</option>
+        <option value="debito" <%= @transaction[:payment_method] == 'debito' ? 'selected' : '' %>>Débito</option>
+        <option value="credito" <%= @transaction[:payment_method] == 'credito' ? 'selected' : '' %>>Cartão de Crédito</option>
+        <option value="vale_alimentacao" <%= @transaction[:payment_method] == 'vale_alimentacao' ? 'selected' : '' %>>Vale Alimentação</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="income_fields" style="display: <%= @transaction[:transaction_type] == 'income' ? 'block' : 'none' %>;">
+    <div class="mb-3">
+      <label class="form-label">Informe o crédito</label>
+      <input type="text" class="form-control brl-currency" name="amount" placeholder="R$ 0,00" value="R$ <%= to_brl(@transaction[:amount]) %>">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Tipo de Crédito</label>
+      <select class="form-select" name="income_type">
+        <option value="salary" <%= @transaction[:income_type] == 'salary' ? 'selected' : '' %>>Salário Mensal</option>
+        <option value="extra_income" <%= @transaction[:income_type] == 'extra_income' ? 'selected' : '' %>>Ganho Extra</option>
+      </select>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a data do crédito</label>
+      <input type="date" class="form-control" name="transaction_date" value="<%= @transaction[:transaction_date] %>">
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Informe a descrição do crédito</label>
+      <input type="text" class="form-control" name="description" value="<%= @transaction[:description] %>">
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+  <a href="/transactions" class="btn btn-secondary">Cancelar</a>
+</form>
+
+<script>
+  document.getElementById('transaction_type').addEventListener('change', function() {
+    const expenseFields = document.getElementById('expense_fields');
+    const incomeFields = document.getElementById('income_fields');
+    if (this.value === 'expense') {
+      expenseFields.style.display = 'block';
+      incomeFields.style.display = 'none';
+    } else {
+      expenseFields.style.display = 'none';
+      incomeFields.style.display = 'block';
+    }
+  });
+
+  document.getElementById('category_select').addEventListener('change', function() {
+    const customField = document.getElementById('custom_category');
+    customField.style.display = this.value === 'Outro' ? 'block' : 'none';
+  });
+</script>

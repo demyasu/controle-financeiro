@@ -1,0 +1,24 @@
+<div class="row justify-content-center" style="margin-top: 60px;">
+  <div class="col-md-5">
+    <div class="card shadow-lg" style="border-radius: 20px; overflow: hidden;">
+      <div class="card-header text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; border: none;">
+        <div style="font-size: 3rem; margin-bottom: 10px;">📝</div>
+        <h3 class="mb-1" style="color: white; font-weight: bold;">Primeiro Acesso</h3>
+        <p style="color: rgba(255,255,255,0.8); margin: 0;">Crie sua conta</p>
+      </div>
+      <div class="card-body" style="padding: 40px;">
+        <form action="/register" method="post">
+          <div class="mb-4">
+            <label class="form-label fw-bold">📧 Informe seu Email</label>
+            <input type="email" class="form-control form-control-lg" name="email" placeholder="seu@email.com" required autofocus>
+            <div class="form-text">Enviaremos um link para criar sua senha.</div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg w-100">Enviar Link</button>
+        </form>
+        <div class="text-center mt-4">
+          <a href="/login" class="text-decoration-none" style="color: #667eea;">← Voltar para login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

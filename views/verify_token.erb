@@ -1,0 +1,40 @@
+<div class="row justify-content-center" style="margin-top: 60px;">
+  <div class="col-md-5">
+    <div class="card shadow-lg" style="border-radius: 20px; overflow: hidden;">
+      <div class="card-header text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; border: none;">
+        <div style="font-size: 3rem; margin-bottom: 10px;">📨</div>
+        <h3 class="mb-1" style="color: white; font-weight: bold;">Verificação</h3>
+        <p style="color: rgba(255,255,255,0.8); margin: 0;">Digite o código enviado ao seu email</p>
+      </div>
+      <div class="card-body" style="padding: 40px; text-align: center;">
+        <% if @email %>
+          <p class="text-muted mb-4">Código enviado para <strong><%= @email %></strong></p>
+        <% end %>
+        <form action="/verify_token" method="post">
+          <div class="mb-4">
+            <label class="form-label fw-bold">🔢 Código de 6 dígitos</label>
+            <input type="text" class="form-control form-control-lg text-center" name="code"
+                   placeholder="_ _ _ _ _ _" maxlength="6" required autofocus
+                   style="font-size: 2rem; letter-spacing: 12px; font-weight: bold;"
+                   inputmode="numeric" pattern="[0-9]{6}">
+          </div>
+          <button type="submit" class="btn btn-primary btn-lg w-100">Verificar</button>
+        </form>
+        <div class="mt-4">
+          <a href="/logout" class="text-decoration-none" style="color: #667eea;">← Cancelar e voltar ao login</a>
+        </div>
+        <% if @code %>
+          <hr class="my-4">
+          <div class="alert alert-info small mb-0">
+            <% if @smtp_configured %>
+            <strong>Email pode estar bloqueado:</strong>
+            <% else %>
+            <strong>Modo desenvolvimento:</strong>
+            <% end %>
+            Código: <span style="font-size: 1.5rem; font-weight: bold; letter-spacing: 4px;"><%= @code %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

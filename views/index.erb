@@ -1,0 +1,147 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">📅 Filtro de Período</h5>
+      </div>
+      <div class="card-body">
+        <form method="get" class="row g-3">
+          <% if @all_users %>
+          <div class="col-md-2">
+            <label class="form-label fw-bold">👤 Usuário</label>
+            <select name="user" class="form-select form-select-lg" onchange="this.form.submit()">
+              <option value="">Meus dados</option>
+              <% @all_users.each do |u| %>
+                <option value="<%= u[:email] %>" <%= 'selected' if @selected_user == u[:email] %>><%= u[:username] %></option>
+              <% end %>
+            </select>
+          </div>
+          <% end %>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Data Inicial</label>
+            <input type="date" class="form-control form-control-lg" name="start_date" value="<%= @start_date %>">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Data Final</label>
+            <input type="date" class="form-control form-control-lg" name="end_date" value="<%= @end_date %>">
+          </div>
+          <div class="col-md-2 align-self-end">
+            <button type="submit" class="btn btn-primary btn-lg w-100">🔍 Filtrar</button>
+          </div>
+          <div class="col-md-2 align-self-end">
+            <a href="/export?start_date=<%= @start_date %>&end_date=<%= @end_date %>" class="btn btn-success btn-lg w-100">📊 Exportar Excel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-4">
+    <div class="stat-card text-center">
+      <div class="mb-2">
+        <i class="bi bi-cash-stack" style="font-size: 2rem; color: #dc3545;"></i>
+      </div>
+      <h5 class="text-muted mb-2">💸 Total Gastos</h5>
+      <h3 class="text-danger fw-bold mb-0"><%= format_currency(@total_gastos) %></h3>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card text-center">
+      <div class="mb-2">
+        <i class="bi bi-wallet2" style="font-size: 2rem; color: #198754;"></i>
+      </div>
+      <h5 class="text-muted mb-2">💰 Total Créditos</h5>
+      <h3 class="text-success fw-bold mb-0"><%= format_currency(@total_creditos) %></h3>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card text-center">
+      <div class="mb-2">
+        <i class="bi bi-graph-<%= @balanco >= 0 ? 'up' : 'down' %>" style="font-size: 2rem; color: <%= @balanco >= 0 ? '#198754' : '#dc3545' %>;"></i>
+      </div>
+      <h5 class="text-muted mb-2">📈 Balanço</h5>
+      <h3 class="fw-bold mb-0 <%= @balanco >= 0 ? 'text-success' : 'text-danger' %>">
+        <%= format_currency(@balanco) %>
+        <small class="d-block mt-1">(<%= @balanco >= 0 ? 'Positivo' : 'Negativo' %>)</small>
+      </h3>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">📋 Todas as Transações</h5>
+    <a href="/new" class="btn btn-light btn-sm">➕ Nova Transação</a>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+            <tr style="background-color: #4472C4 !important; color: white !important; font-weight: bold; text-transform: uppercase; font-size: 0.9rem;">
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">📅 Data</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">📝 Descrição</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: right;">💵 Valor (R$)</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">🏷️ Tipo</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">📁 Categoria</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">💳 Pagamento</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">🔢 Parcelas</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">📌 Status</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">⚙️ Ações</th>
+            </tr>
+        </thead>
+            <tbody>
+              <% if @transactions.empty? %>
+                <tr>
+                  <td colspan="9" class="text-center text-muted py-5">
+                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                <p class="mt-2">Nenhuma transação encontrada no período.</p>
+              </td>
+            </tr>
+          <% else %>
+              <% @transactions.each do |t| %>
+                <tr>
+                  <td class="py-3 px-4"><%= t[:transaction_date] ? t[:transaction_date].strftime('%d/%m/%Y') : '-' %></td>
+                  <td class="py-3 px-4"><%= t[:description] %></td>
+                  <td class="py-3 px-4 text-end fw-bold"><%= format_currency(t[:amount]) %></td>
+                  <td class="py-3 px-4">
+                    <% if ['Gasto', 'Financiamento', 'Crédito Parcelado', 'Pix Parcelado'].include?(t[:transaction_type]) %>
+                      <span class="badge bg-danger"><%= t[:transaction_type] %></span>
+                    <% else %>
+                      <span class="badge bg-success"><%= t[:transaction_type] %></span>
+                    <% end %>
+                  </td>
+                  <td class="py-3 px-4"><%= t[:category] || '-' %></td>
+                  <td class="py-3 px-4"><%= t[:payment_method] || '-' %></td>
+                  <td class="py-3 px-4 text-center">
+                    <% if t[:installments] && t[:installments] > 1 %>
+                      <span class="badge bg-info">1 de <%= t[:installments] %></span>
+                    <% elsif t[:installments] == 1 %>
+                      <span class="badge bg-info">1 de 1</span>
+                    <% else %>
+                      -
+                    <% end %>
+                  </td>
+                  <td class="py-3 px-4 text-center">
+                    <% if t[:status] == 'Pago' %>
+                      <span class="badge bg-success">Pago</span>
+                    <% else %>
+                      <span class="badge bg-warning">Pendente</span>
+                    <% end %>
+                  </td>
+                  <td class="py-3 px-4 text-center">
+                    <a href="/transactions/<%= t[:id] %>/edit" class="btn btn-warning btn-sm me-1">✏️</a>
+                    <form action="/transactions/<%= t[:id] %>" method="post" style="display:inline;">
+                      <input type="hidden" name="_method" value="delete">
+                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirma exclusão?')">🗑️</button>
+                    </form>
+                  </td>
+                </tr>
+              <% end %>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

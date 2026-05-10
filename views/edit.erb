@@ -1,0 +1,232 @@
+<h1>Editar Transação</h1>
+
+<form method="post" action="/transactions/<%= @transaction[:id] %>">
+  <input type="hidden" name="_method" value="patch">
+
+  <div class="mb-3">
+    <label class="form-label" id="label_date">Data do Gasto</label>
+    <input type="date" class="form-control" name="transaction_date" required value="<%= @transaction[:transaction_date].strftime('%Y-%m-%d') %>">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" id="label_description">Descrição do Gasto</label>
+    <input type="text" class="form-control" name="description" required value="<%= @transaction[:description] %>">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label" id="label_amount">Informe os Gastos (R$)</label>
+    <input type="text" class="form-control" name="amount" required value="R$ <%= format('%.2f', @transaction[:amount]).gsub('.', ',') %>" onkeyup="formatCurrency(this)">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Tipo de Transação</label>
+    <select class="form-control" name="transaction_type" id="transaction_type" required onchange="toggleFields()">
+      <option value="Gasto" <%= @transaction[:transaction_type] == 'Gasto' ? 'selected' : '' %>>Gasto</option>
+      <option value="Salário Mensal" <%= @transaction[:transaction_type] == 'Salário Mensal' ? 'selected' : '' %>>Salário Mensal</option>
+      <option value="Ganho Extra" <%= @transaction[:transaction_type] == 'Ganho Extra' ? 'selected' : '' %>>Ganho Extra</option>
+      <option value="Financiamento" <%= @transaction[:transaction_type] == 'Financiamento' ? 'selected' : '' %>>Financiamento</option>
+      <option value="Crédito Parcelado" <%= @transaction[:transaction_type] == 'Crédito Parcelado' ? 'selected' : '' %>>Crédito Parcelado</option>
+      <option value="Pix Parcelado" <%= @transaction[:transaction_type] == 'Pix Parcelado' ? 'selected' : '' %>>Pix Parcelado</option>
+    </select>
+  </div>
+
+  <div class="mb-3" id="category_field">
+    <label class="form-label">Categoria</label>
+    <select class="form-control" name="category">
+      <option value="">Selecione...</option>
+      <option value="Alimentação" <%= @transaction[:category] == 'Alimentação' ? 'selected' : '' %>>Alimentação</option>
+      <option value="Gastos com carro" <%= @transaction[:category] == 'Gastos com carro' ? 'selected' : '' %>>Gastos com carro</option>
+      <option value="Animais" <%= @transaction[:category] == 'Animais' ? 'selected' : '' %>>Animais</option>
+      <option value="Crianças" <%= @transaction[:category] == 'Crianças' ? 'selected' : '' %>>Crianças</option>
+      <option value="Academia" <%= @transaction[:category] == 'Academia' ? 'selected' : '' %>>Academia</option>
+      <option value="Compra mensal" <%= @transaction[:category] == 'Compra mensal' ? 'selected' : '' %>>Compra mensal</option>
+      <option value="Água" <%= @transaction[:category] == 'Água' ? 'selected' : '' %>>Água</option>
+      <option value="Energia" <%= @transaction[:category] == 'Energia' ? 'selected' : '' %>>Energia</option>
+      <option value="Gás" <%= @transaction[:category] == 'Gás' ? 'selected' : '' %>>Gás</option>
+      <option value="Telefone" <%= @transaction[:category] == 'Telefone' ? 'selected' : '' %>>Telefone</option>
+      <option value="Celular" <%= @transaction[:category] == 'Celular' ? 'selected' : '' %>>Celular</option>
+      <option value="Internet" <%= @transaction[:category] == 'Internet' ? 'selected' : '' %>>Internet</option>
+      <option value="Uber" <%= @transaction[:category] == 'Uber' ? 'selected' : '' %>>Uber</option>
+      <option value="Táxi" <%= @transaction[:category] == 'Táxi' ? 'selected' : '' %>>Táxi</option>
+      <option value="Financiamento" <%= @transaction[:category] == 'Financiamento' ? 'selected' : '' %>>Financiamento</option>
+    </select>
+  </div>
+
+  <div class="mb-3" id="payment_field">
+    <label class="form-label">Forma de Pagamento</label>
+    <select class="form-control" name="payment_method">
+      <option value="">Selecione...</option>
+      <option value="Dinheiro" <%= @transaction[:payment_method] == 'Dinheiro' ? 'selected' : '' %>>Dinheiro</option>
+      <option value="Débito" <%= @transaction[:payment_method] == 'Débito' ? 'selected' : '' %>>Débito</option>
+      <option value="Crédito" <%= @transaction[:payment_method] == 'Crédito' ? 'selected' : '' %>>Crédito</option>
+      <option value="Vale Alimentação" <%= @transaction[:payment_method] == 'Vale Alimentação' ? 'selected' : '' %>>Vale Alimentação</option>
+    </select>
+  </div>
+
+  <!-- Campos para Crédito Parcelado / Financiamento -->
+  <div class="mb-3" id="credit_fields" style="display: <% if @transaction[:financing_type] == 'cartao' || @transaction[:financing_type] == 'financiamento' || @transaction[:financing_type] == 'pix' %>block<% else %>none<% end %>;">
+    <label class="form-label">Tipo de Crédito</label>
+    <select class="form-control" name="financing_type" id="financing_type" onchange="toggleCreditFields()">
+      <option value="">Selecione...</option>
+      <option value="cartao" <%= @transaction[:financing_type] == 'cartao' ? 'selected' : '' %>>Cartão de Crédito</option>
+      <option value="financiamento" <%= @transaction[:financing_type] == 'financiamento' ? 'selected' : '' %>>Financiamento</option>
+      <option value="pix" <%= @transaction[:financing_type] == 'pix' ? 'selected' : '' %>>Pix</option>
+    </select>
+  </div>
+
+  <div class="mb-3" id="installments_field" style="display: <% if @transaction[:installments] %>block<% else %>none<% end %>;">
+    <label class="form-label">Número de Parcelas</label>
+    <input type="number" class="form-control" name="installments" id="installments" min="1" max="120" value="<%= @transaction[:installments] || '' %>">
+  </div>
+
+  <div class="mb-3" id="bank_field" style="display: <% if @transaction[:bank] || @transaction[:card_name] %>block<% else %>none<% end %>;">
+    <label class="form-label">Banco / Nome do Cartão</label>
+    <select class="form-control" name="bank" id="bank">
+      <option value="">Selecione...</option>
+      <option value="MercadoPago" <%= @transaction[:bank] == 'MercadoPago' ? 'selected' : '' %>>MercadoPago</option>
+      <option value="Banco do Brasil" <%= @transaction[:bank] == 'Banco do Brasil' ? 'selected' : '' %>>Banco do Brasil</option>
+      <option value="Neon" <%= @transaction[:bank] == 'Neon' ? 'selected' : '' %>>Neon</option>
+      <option value="BV" <%= @transaction[:bank] == 'BV' ? 'selected' : '' %>>BV</option>
+      <option value="Nubank" <%= @transaction[:bank] == 'Nubank' ? 'selected' : '' %>>Nubank</option>
+      <option value="PicPay" <%= @transaction[:bank] == 'PicPay' ? 'selected' : '' %>>PicPay</option>
+      <option value="Itaú" <%= @transaction[:bank] == 'Itaú' ? 'selected' : '' %>>Itaú</option>
+      <option value="Bradesco" <%= @transaction[:bank] == 'Bradesco' ? 'selected' : '' %>>Bradesco</option>
+      <option value="Caixa Econômica Federal" <%= @transaction[:bank] == 'Caixa Econômica Federal' ? 'selected' : '' %>>Caixa Econômica Federal</option>
+    </select>
+    <input type="text" class="form-control mt-2" name="card_name" id="card_name" placeholder="Ou digite o nome do cartão/banco" value="<%= @transaction[:card_name] || '' %>">
+  </div>
+
+  <div class="mb-3" id="due_date_field" style="display: <% if @transaction[:due_date] %>block<% else %>none<% end %>;">
+    <label class="form-label">Vencimento do Cartão</label>
+    <input type="date" class="form-control" name="due_date" id="due_date" value="<%= @transaction[:due_date] ? @transaction[:due_date].strftime('%Y-%m-%d') : '' %>">
+  </div>
+
+  <div class="mb-3">
+    <label class="form-label">Status</label>
+    <select class="form-control" name="status">
+      <option value="Pendente" <%= @transaction[:status] == 'Pendente' ? 'selected' : '' %>>Pendente</option>
+      <option value="Pago" <%= @transaction[:status] == 'Pago' ? 'selected' : '' %>>Pago</option>
+    </select>
+  </div>
+
+  <button type="submit" class="btn btn-primary" onclick="return validateForm()">Atualizar</button>
+  <a href="/" class="btn btn-secondary">Cancelar</a>
+</form>
+
+<script>
+function formatCurrency(input) {
+  let value = input.value.replace(/\D/g, '');
+  value = (value / 100).toFixed(2) + '';
+  value = value.replace('.', ',');
+  value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+  input.value = 'R$ ' + value;
+}
+
+function toggleFields() {
+  const type = document.getElementById('transaction_type').value;
+  const categoryField = document.getElementById('category_field');
+  const paymentField = document.getElementById('payment_field');
+  const creditFields = document.getElementById('credit_fields');
+  const labelDate = document.getElementById('label_date');
+  const labelDescription = document.getElementById('label_description');
+  const labelAmount = document.getElementById('label_amount');
+
+  if (type === 'Gasto') {
+    labelDate.textContent = 'Data do Gasto';
+    labelDescription.textContent = 'Descrição do Gasto';
+    labelAmount.textContent = 'Informe os Gastos (R$)';
+    categoryField.style.display = 'block';
+    paymentField.style.display = 'block';
+    creditFields.style.display = 'none';
+  } else if (type === 'Salário Mensal' || type === 'Ganho Extra') {
+    labelDate.textContent = 'Data do Crédito';
+    labelDescription.textContent = 'Descrição do Crédito';
+    labelAmount.textContent = 'Informe o Crédito (R$)';
+    categoryField.style.display = 'none';
+    paymentField.style.display = 'none';
+    creditFields.style.display = 'none';
+  } else if (type === 'Financiamento') {
+    labelDate.textContent = 'Data do Financiamento';
+    labelDescription.textContent = 'Descrição do Financiamento';
+    labelAmount.textContent = 'Valor Total (R$)';
+    categoryField.style.display = 'none';
+    paymentField.style.display = 'none';
+    creditFields.style.display = 'block';
+    document.getElementById('financing_type').value = 'financiamento';
+    toggleCreditFields();
+  } else if (type === 'Crédito Parcelado') {
+    labelDate.textContent = 'Data do Crédito';
+    labelDescription.textContent = 'Descrição do Crédito';
+    labelAmount.textContent = 'Valor Total (R$)';
+    categoryField.style.display = 'none';
+    paymentField.style.display = 'none';
+    creditFields.style.display = 'block';
+    document.getElementById('financing_type').value = 'cartao';
+    toggleCreditFields();
+  } else if (type === 'Pix Parcelado') {
+    labelDate.textContent = 'Data do Pix';
+    labelDescription.textContent = 'Descrição do Pix';
+    labelAmount.textContent = 'Valor Total (R$)';
+    categoryField.style.display = 'none';
+    paymentField.style.display = 'none';
+    creditFields.style.display = 'block';
+    document.getElementById('financing_type').value = 'pix';
+    toggleCreditFields();
+  } else {
+    categoryField.style.display = 'block';
+    paymentField.style.display = 'block';
+    creditFields.style.display = 'none';
+  }
+}
+
+function toggleCreditFields() {
+  const finType = document.getElementById('financing_type').value;
+  const installmentsField = document.getElementById('installments_field');
+  const bankField = document.getElementById('bank_field');
+  const dueDateField = document.getElementById('due_date_field');
+
+  if (finType === 'cartao' || finType === 'financiamento' || finType === 'pix') {
+    installmentsField.style.display = 'block';
+    bankField.style.display = 'block';
+    dueDateField.style.display = 'block';
+  } else {
+    installmentsField.style.display = 'none';
+    bankField.style.display = 'none';
+    dueDateField.style.display = 'none';
+  }
+}
+
+function validateForm() {
+  const type = document.getElementById('transaction_type').value;
+  const isParcelado = ['Financiamento', 'Crédito Parcelado', 'Pix Parcelado'].includes(type);
+  
+  if (isParcelado) {
+    // Auto-fill financing_type based on transaction type if not already set
+    const finType = document.getElementById('financing_type');
+    if (!finType.value && type === 'Crédito Parcelado') {
+      finType.value = 'cartao';
+    } else if (!finType.value && type === 'Financiamento') {
+      finType.value = 'financiamento';
+    } else if (!finType.value && type === 'Pix Parcelado') {
+      finType.value = 'pix';
+    }
+    
+    const installments = document.getElementById('installments').value;
+    const dueDate = document.getElementById('due_date').value;
+    const financingType = document.getElementById('financing_type').value;
+    
+    console.log('Validando:', { type, installments, dueDate, financingType });
+    
+    if (!installments || !dueDate || !financingType) {
+      alert('Por favor, preencha todos os campos de parcelas, vencimento e tipo de crédito para ' + type);
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+// Inicializar campos ao carregar
+toggleFields();
+toggleCreditFields();
+</script>

@@ -1,0 +1,7 @@
+.env
+tmp/
+server.log
+*.pstore
+*.backup
+nul
+.DS_Store
