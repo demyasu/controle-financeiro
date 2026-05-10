@@ -1,5 +1,5 @@
-app = "controle-financeiro"
-primary_region = "gig"
+app = "controle-financeiro-app"
+primary_region = "gru"
 
 [build]
 
