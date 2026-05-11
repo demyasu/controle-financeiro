@@ -5,6 +5,8 @@ namespace :db do
   desc 'Run migrations'
   task :migrate do
     require_relative 'config/database'
+    Sequel.extension :migration
+    Sequel::Migrator.run(DB, File.join(__dir__, 'db', 'migrations'))
     puts 'Migrations completed!'
   end
 

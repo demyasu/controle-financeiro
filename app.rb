@@ -14,23 +14,20 @@ require 'sequel'
 require_relative 'config/database'
 
 class User < Sequel::Model(:users)
+  unrestrict_primary_key
 end
 
 class Transaction < Sequel::Model(:transactions)
+  plugin :serialization
   serialize_attributes :json, :paid_installments
 end
 
 class RegToken < Sequel::Model(:reg_tokens)
+  unrestrict_primary_key
 end
 
 class LoginToken < Sequel::Model(:login_tokens)
-end
-
-configure do
-  migration_dir = File.join(__dir__, 'db', 'migrations')
-  if Dir.exist?(migration_dir)
-    Sequel::Migrator.run(DB, migration_dir)
-  end
+  unrestrict_primary_key
 end
 
 SMTP_CONFIG = {
@@ -228,9 +225,70 @@ before do
 end
 
 before do
-  pass if ['/login', '/register', '/verify', '/authenticate', '/verify_token', '/logout'].include?(request.path)
+  pass if ['/login', '/register', '/verify', '/authenticate', '/verify_token', '/logout', '/forgot_password'].include?(request.path)
   pass if request.path =~ %r{^/register/[^/]+$}
+  pass if request.path =~ %r{^/reset_password/}
   pass if session[:user_email]
+  redirect '/login'
+end
+
+get '/forgot_password' do
+  erb :forgot_password
+end
+
+post '/forgot_password' do
+  email = params[:email].to_s.strip.downcase
+  user = User[email]
+  unless user
+    @error = 'Email não encontrado'
+    return erb :forgot_password
+  end
+  token = generate_token
+  RegToken.create(token: token, email: email, created_at: Time.now, used: false)
+  reset_link = "#{request.base_url}/reset_password/#{token}"
+  send_email(
+    to: email,
+    subject: 'Redefinição de senha',
+    body: "<h2>Redefinição de senha</h2><p>Clique no link abaixo para redefinir sua senha:</p><p><a href=\"#{reset_link}\">#{reset_link}</a></p><p>Se você não solicitou esta redefinição, ignore este email.</p>"
+  )
+  @dev_link = reset_link
+  @smtp_configured = SMTP_CONFIG[:username] && SMTP_CONFIG[:password]
+  session[:notice] = 'Se o email existir, um link de redefinição será enviado.'
+  redirect '/login'
+end
+
+get '/reset_password/:token' do
+  token_data = RegToken[params[:token]]
+  if token_data.nil? || token_data[:used]
+    @error = 'Link inválido ou expirado'
+    return erb :forgot_password
+  end
+  @token = params[:token]
+  erb :reset_password
+end
+
+post '/reset_password/:token' do
+  token_data = RegToken[params[:token]]
+  if token_data.nil? || token_data[:used]
+    @error = 'Link inválido ou expirado'
+    return erb :forgot_password
+  end
+  password = params[:password].to_s
+  confirm = params[:confirm_password].to_s
+  if password.length < 6
+    @error = 'Senha deve ter no mínimo 6 caracteres'
+    @token = params[:token]
+    return erb :reset_password
+  end
+  if password != confirm
+    @error = 'Senhas não conferem'
+    @token = params[:token]
+    return erb :reset_password
+  end
+  pwd_hash = hash_password(password)
+  token_data.update(used: true)
+  User.where(email: token_data[:email]).update(password_hash: pwd_hash)
+  session[:notice] = 'Senha redefinida com sucesso! Faça seu login.'
   redirect '/login'
 end
 

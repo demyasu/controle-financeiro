@@ -2,6 +2,6 @@
 tmp/
 server.log
 *.pstore
-*.backup
 nul
-.DS_Store
+DOCUMENTACAO_TECNICA.md
+TECHNICAL_DOCS.md
