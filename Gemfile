@@ -1,7 +1,5 @@
 source 'https://rubygems.org'
 
-ruby '>= 3.2.0'
-
 gem 'sinatra', '3.2.0'
 gem 'write_xlsx'
 gem 'dotenv', '~> 3.1'
