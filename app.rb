@@ -58,7 +58,11 @@ def send_email(to:, subject:, body:)
   EMail
 
   smtp = Net::SMTP.new(SMTP_CONFIG[:server], SMTP_CONFIG[:port])
-  smtp.enable_ssl if SMTP_CONFIG[:port] == 465
+  if SMTP_CONFIG[:port] == 465
+    smtp.enable_ssl
+  else
+    smtp.enable_starttls
+  end
   smtp.start(SMTP_CONFIG[:domain], SMTP_CONFIG[:username], SMTP_CONFIG[:password], :login) do |s|
     s.send_message(msg, SMTP_CONFIG[:from], to)
   end
