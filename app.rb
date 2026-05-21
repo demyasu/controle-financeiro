@@ -31,13 +31,13 @@ class LoginToken < Sequel::Model(:login_tokens)
 end
 
 SMTP_CONFIG = {
-  server:   ENV['SMTP_SERVER']   || 'smtp.office365.com',
-  port:     (ENV['SMTP_PORT']    || 587).to_i,
-  domain:   ENV['SMTP_DOMAIN']   || 'localhost',
-  username: ENV['SMTP_USERNAME'],
-  password: ENV['SMTP_PASSWORD'],
-  from:     ENV['SMTP_FROM']     || ENV['SMTP_USERNAME'],
-  from_name: ENV['SMTP_FROM_NAME'] || 'Controle Financeiro'
+  server:   ENV['RENDER_SMTP_SERVER'] || ENV['SMTP_SERVER']   || 'smtp.office365.com',
+  port:     (ENV['RENDER_SMTP_PORT']   || ENV['SMTP_PORT']    || 587).to_i,
+  domain:   ENV['RENDER_SMTP_DOMAIN'] || ENV['SMTP_DOMAIN']   || 'localhost',
+  username: ENV['RENDER_SMTP_USERNAME'] || ENV['SMTP_USERNAME'],
+  password: ENV['RENDER_SMTP_PASSWORD'] || ENV['SMTP_PASSWORD'],
+  from:     ENV['RENDER_SMTP_FROM'] || ENV['SMTP_FROM'] || ENV['RENDER_SMTP_USERNAME'] || ENV['SMTP_USERNAME'],
+  from_name: ENV['RENDER_SMTP_FROM_NAME'] || ENV['SMTP_FROM_NAME'] || 'Controle Financeiro'
 }
 
 def send_email(to:, subject:, body:)
