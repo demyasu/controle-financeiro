@@ -2,13 +2,13 @@ const fs = require('fs');
 const path = require('path');
 
 const vars = {
-  SMTP_SERVER: process.env.RENDER_SMTP_SERVER || process.env.SMTP_SERVER || 'smtp.office365.com',
-  SMTP_PORT: process.env.RENDER_SMTP_PORT || process.env.SMTP_PORT || '587',
-  SMTP_DOMAIN: process.env.RENDER_SMTP_DOMAIN || process.env.SMTP_DOMAIN || 'localhost',
-  SMTP_USERNAME: process.env.RENDER_SMTP_USERNAME || process.env.SMTP_USERNAME || '',
-  SMTP_PASSWORD: process.env.RENDER_SMTP_PASSWORD || process.env.SMTP_PASSWORD || '',
-  SMTP_FROM: process.env.RENDER_SMTP_FROM || process.env.SMTP_FROM || process.env.RENDER_SMTP_USERNAME || process.env.SMTP_USERNAME || '',
-  SMTP_FROM_NAME: process.env.RENDER_SMTP_FROM_NAME || process.env.SMTP_FROM_NAME || 'Controle Financeiro'
+  RENDER_SMTP_SERVER: process.env.RENDER_SMTP_SERVER || process.env.SMTP_SERVER || 'smtp.sendgrid.net',
+  RENDER_SMTP_PORT: process.env.RENDER_SMTP_PORT || process.env.SMTP_PORT || '587',
+  RENDER_SMTP_DOMAIN: process.env.RENDER_SMTP_DOMAIN || process.env.SMTP_DOMAIN || 'localhost',
+  RENDER_SMTP_USERNAME: process.env.RENDER_SMTP_USERNAME || process.env.SMTP_USERNAME || 'apikey',
+  RENDER_SMTP_PASSWORD: process.env.RENDER_SMTP_PASSWORD || process.env.SMTP_PASSWORD || process.env.SENDGRID_API_KEY || '',
+  RENDER_SMTP_FROM: process.env.RENDER_SMTP_FROM || process.env.SMTP_FROM || '',
+  RENDER_SMTP_FROM_NAME: process.env.RENDER_SMTP_FROM_NAME || process.env.SMTP_FROM_NAME || 'Controle Financeiro'
 };
 
 const quote = (value) => {
@@ -24,6 +24,7 @@ const quote = (value) => {
 
 const filePath = path.resolve(__dirname, '.env');
 const content = Object.entries(vars)
+  .filter(([, value]) => value && String(value).length > 0)
   .map(([key, value]) => `${key}=${quote(value)}`)
   .join('\n') + '\n';
 

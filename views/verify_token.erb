@@ -23,17 +23,7 @@
         <div class="mt-4">
           <a href="/logout" class="text-decoration-none" style="color: #667eea;">← Cancelar e voltar ao login</a>
         </div>
-        <% if @code %>
-          <hr class="my-4">
-          <div class="alert alert-info small mb-0">
-            <% if @smtp_configured %>
-            <strong>Email pode estar bloqueado:</strong>
-            <% else %>
-            <strong>Modo desenvolvimento:</strong>
-            <% end %>
-            Código: <span style="font-size: 1.5rem; font-weight: bold; letter-spacing: 4px;"><%= @code %></span>
-          </div>
-        <% end %>
+
       </div>
     </div>
   </div>

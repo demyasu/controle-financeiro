@@ -31,19 +31,23 @@ class LoginToken < Sequel::Model(:login_tokens)
 end
 
 SMTP_CONFIG = {
-  server:   ENV['RENDER_SMTP_SERVER'] || ENV['SMTP_SERVER']   || 'smtp.office365.com',
+  server:   ENV['RENDER_SMTP_SERVER'] || ENV['SMTP_SERVER']   || 'smtp.sendgrid.net',
   port:     (ENV['RENDER_SMTP_PORT']   || ENV['SMTP_PORT']    || 587).to_i,
   domain:   ENV['RENDER_SMTP_DOMAIN'] || ENV['SMTP_DOMAIN']   || 'localhost',
-  username: ENV['RENDER_SMTP_USERNAME'] || ENV['SMTP_USERNAME'],
-  password: ENV['RENDER_SMTP_PASSWORD'] || ENV['SMTP_PASSWORD'],
+  username: ENV['RENDER_SMTP_USERNAME'] || ENV['SMTP_USERNAME'] || 'apikey',
+  password: ENV['RENDER_SMTP_PASSWORD'] || ENV['SMTP_PASSWORD'] || ENV['SENDGRID_API_KEY'],
   from:     ENV['RENDER_SMTP_FROM'] || ENV['SMTP_FROM'] || ENV['RENDER_SMTP_USERNAME'] || ENV['SMTP_USERNAME'],
   from_name: ENV['RENDER_SMTP_FROM_NAME'] || ENV['SMTP_FROM_NAME'] || 'Controle Financeiro'
 }
 
+def smtp_configured?
+  pass = SMTP_CONFIG[:password]
+  pass && !pass.empty?
+end
+
 def send_email(to:, subject:, body:)
-  unless SMTP_CONFIG[:username] && SMTP_CONFIG[:password]
+  unless smtp_configured?
     puts "[EMAIL] SMTP não configurado. Para: #{to}, Assunto: #{subject}"
-    puts "[EMAIL] Link (dev): #{body[/https?:\/\/[^\s<]+/]}" if body
     return
   end
 
@@ -69,8 +73,6 @@ def send_email(to:, subject:, body:)
   puts "[EMAIL] Enviado para #{to}: #{subject}"
 rescue => e
   puts "[EMAIL] ERRO ao enviar para #{to}: #{e.message}"
-  puts "[EMAIL] Fallback - código/link disponível no console"
-  puts "[EMAIL] Link: #{body[/https?:\/\/[^\s<]+/]}" if body && body.include?('http')
 end
 
 enable :method_override
@@ -255,8 +257,6 @@ post '/forgot_password' do
     subject: 'Redefinição de senha',
     body: "<h2>Redefinição de senha</h2><p>Clique no link abaixo para redefinir sua senha:</p><p><a href=\"#{reset_link}\">#{reset_link}</a></p><p>Se você não solicitou esta redefinição, ignore este email.</p>"
   )
-  @dev_link = reset_link
-  @smtp_configured = SMTP_CONFIG[:username] && SMTP_CONFIG[:password]
   session[:notice] = 'Se o email existir, um link de redefinição será enviado.'
   redirect '/login'
 end
@@ -318,9 +318,7 @@ post '/authenticate' do
     body: "<h2>Código de verificação</h2><p>Seu código é: <strong>#{code}</strong></p><p>Este código expira em 10 minutos.</p>"
   )
   session[:pending_token] = token
-  @code = code
   @email = email
-  @smtp_configured = SMTP_CONFIG[:username] && SMTP_CONFIG[:password]
   erb :verify_token
 end
 
@@ -357,9 +355,7 @@ post '/register' do
     subject: 'Confirme seu cadastro',
     body: "<h2>Cadastro no Controle Financeiro</h2><p>Clique no link abaixo para criar sua conta:</p><p><a href=\"#{reg_link}\">#{reg_link}</a></p><p>Este link expira em 24 horas.</p>"
   )
-  @dev_link = reg_link
   @email = email
-  @smtp_configured = SMTP_CONFIG[:username] && SMTP_CONFIG[:password]
   erb :register_sent
 end
 
