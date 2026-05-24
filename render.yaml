@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: controle-financeiro
+    runtime: docker
+    repo: https://github.com/seu-usuario/controle-financeiro
+    plan: free
+    region: ohio
+    branch: main
+    numInstances: 1
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: controle-financeiro-db
+          property: connectionString
+      - key: RENDER_SMTP_SERVER
+        value: mail.ideiasti.com
+      - key: RENDER_SMTP_PORT
+        value: "587"
+      - key: RENDER_SMTP_USERNAME
+        value: noreply@ideiasti.com
+      - key: RENDER_SMTP_PASSWORD
+        sync: false
+      - key: RENDER_SMTP_FROM
+        value: noreply@ideiasti.com
+      - key: RENDER_SMTP_FROM_NAME
+        value: Controle Financeiro
+      - key: SESSION_SECRET
+        generateValue: true
+
+databases:
+  - name: controle-financeiro-db
+    plan: free
+    region: ohio
+    databaseName: controle_financeiro
+    ipAllowList: []
