@@ -61,18 +61,66 @@ def send_email(to:, subject:, body:)
     #{body}
   EMail
 
-  smtp = Net::SMTP.new(SMTP_CONFIG[:server], SMTP_CONFIG[:port])
-  if SMTP_CONFIG[:port] == 465
-    smtp.enable_ssl
+  begin
+    smtp = Net::SMTP.new(SMTP_CONFIG[:server], SMTP_CONFIG[:port])
+    smtp.open_timeout = 15
+    smtp.read_timeout = 30
+    if SMTP_CONFIG[:port] == 465
+      smtp.enable_ssl
+    else
+      smtp.enable_starttls
+    end
+    smtp.start(SMTP_CONFIG[:domain], SMTP_CONFIG[:username], SMTP_CONFIG[:password], :login) do |s|
+      s.send_message(msg, SMTP_CONFIG[:from], to)
+    end
+    puts "[EMAIL] Enviado para #{to}: #{subject}"
+    return
+  rescue => e
+    puts "[EMAIL] SMTP falhou para #{to}: #{e.message}"
+    puts "[EMAIL] Tentando API SendGrid..."
+  end
+
+  send_email_via_api(to:, subject:, body:)
+end
+
+def send_email_via_api(to:, subject:, body:)
+  api_key = SMTP_CONFIG[:password]
+  unless api_key && !api_key.empty?
+    puts "[EMAIL] API key não disponível para fallback"
+    return
+  end
+
+  require 'net/http'
+  require 'json'
+
+  uri = URI('https://api.sendgrid.com/v3/mail/send')
+  http = Net::HTTP.new(uri.host, uri.port)
+  http.open_timeout = 15
+  http.read_timeout = 30
+  http.use_ssl = true
+
+  payload = {
+    personalizations: [{ to: [{ email: to }] }],
+    from: { email: SMTP_CONFIG[:from], name: SMTP_CONFIG[:from_name] },
+    subject: subject,
+    content: [{ type: 'text/html', value: body }]
+  }
+
+  request = Net::HTTP::Post.new(uri)
+  request['Authorization'] = "Bearer #{api_key}"
+  request['Content-Type'] = 'application/json'
+  request.body = JSON.generate(payload)
+
+  response = http.request(request)
+
+  if response.code.to_i.between?(200, 299)
+    puts "[EMAIL] Enviado via API para #{to}: #{subject}"
   else
-    smtp.enable_starttls
+    puts "[EMAIL] ERRO ao enviar via API para #{to}: #{response.code} #{response.body}"
   end
-  smtp.start(SMTP_CONFIG[:domain], SMTP_CONFIG[:username], SMTP_CONFIG[:password], :login) do |s|
-    s.send_message(msg, SMTP_CONFIG[:from], to)
-  end
-  puts "[EMAIL] Enviado para #{to}: #{subject}"
 rescue => e
   puts "[EMAIL] ERRO ao enviar para #{to}: #{e.message}"
+  puts e.backtrace.first(3).join("\n") if e.backtrace
 end
 
 enable :method_override

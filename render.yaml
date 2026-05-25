@@ -13,11 +13,11 @@ services:
           name: controle-financeiro-db
           property: connectionString
       - key: RENDER_SMTP_SERVER
-        value: mail.ideiasti.com
+        value: smtp.sendgrid.net
       - key: RENDER_SMTP_PORT
         value: "587"
       - key: RENDER_SMTP_USERNAME
-        value: noreply@ideiasti.com
+        value: apikey
       - key: RENDER_SMTP_PASSWORD
         sync: false
       - key: RENDER_SMTP_FROM
