@@ -10,6 +10,7 @@ require 'base64'
 require 'securerandom'
 require 'net/smtp'
 require 'sequel'
+require 'roo'
 
 require_relative 'config/database'
 
@@ -461,7 +462,7 @@ end
 post '/transactions/:id/toggle_installment' do
   t = Transaction[params[:id].to_i]
   if t && (t[:user_email] == current_user_email || admin?)
-    paid = t[:paid_installments] || []
+    paid = t.paid_installments || []
     installment = params[:installment].to_i
     if paid.include?(installment)
       paid.delete(installment)
@@ -523,6 +524,153 @@ end
 
 get '/new' do
   erb :new
+end
+
+get '/import/template' do
+  tempfile = Tempfile.new(['modelo_importacao', '.xlsx'])
+  tempfile.close
+  workbook = WriteXLSX.new(tempfile.path)
+  worksheet = workbook.add_worksheet('Transações')
+
+  headers = ['Data', 'Descrição', 'Valor', 'Tipo', 'Categoria', 'Pagamento', 'TipoFinanciamento', 'Parcelas', 'Vencimento', 'Banco', 'Cartão', 'Status']
+  header_format = workbook.add_format(bold: true, bg_color: '#4472C4', color: 'white', align: 'center', border: 1)
+
+  headers.each_with_index { |h, i| worksheet.write(0, i, h, header_format) }
+
+  widths = [12, 30, 12, 20, 15, 18, 20, 10, 12, 20, 20, 10]
+  widths.each_with_index { |w, i| worksheet.set_column(i, i, w) }
+
+  workbook.close
+  send_file tempfile.path, filename: 'modelo_importacao_transacoes.xlsx', type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  File.delete(tempfile.path) rescue nil
+end
+
+get '/import' do
+  erb :import
+end
+
+def parse_xlsx_date(value)
+  return nil if value.nil? || value.to_s.strip.empty?
+  if value.is_a?(Date) || value.is_a?(DateTime) || value.is_a?(Time)
+    value.to_date
+  elsif value.is_a?(Float) || value.is_a?(Integer)
+    Date.new(1899, 12, 30) + value.to_i
+  else
+    begin
+      Date.parse(value.to_s)
+    rescue
+      nil
+    end
+  end
+end
+
+def parse_xlsx_currency(value)
+  return 0.0 if value.nil?
+  if value.is_a?(Numeric)
+    value.to_f
+  else
+    value.to_s.gsub('R$', '').gsub('.', '').gsub(',', '.').to_f
+  end
+end
+
+COLUMN_MAP = {
+  'Data'            => :transaction_date,
+  'Descrição'       => :description,
+  'Valor'           => :amount,
+  'Tipo'            => :transaction_type,
+  'Categoria'       => :category,
+  'Pagamento'       => :payment_method,
+  'TipoFinanciamento' => :financing_type,
+  'Parcelas'        => :installments,
+  'Vencimento'      => :due_date,
+  'Banco'           => :bank,
+  'Cartão'          => :card_name,
+  'Cartao'          => :card_name,
+  'Status'          => :status
+}.freeze
+
+post '/import' do
+  unless params[:file] && params[:file][:tempfile]
+    @error = 'Selecione um arquivo XLSX'
+    return erb :import
+  end
+
+  tempfile = params[:file][:tempfile]
+  original_name = params[:file][:filename]
+
+  unless original_name && original_name =~ /\.xlsx$/i
+    @error = 'Formato inválido. Use arquivos .xlsx'
+    return erb :import
+  end
+
+  begin
+    workbook = Roo::Spreadsheet.open(tempfile.path)
+    sheet = workbook.sheet(0)
+
+    header_row = sheet.row(1).map { |h| h.to_s.strip }
+    col_index = {}
+    header_row.each_with_index do |h, i|
+      key = COLUMN_MAP.keys.find { |k| k.casecmp?(h) }
+      col_index[COLUMN_MAP[key]] = i if key
+    end
+
+    required = [:transaction_date, :description, :amount, :transaction_type]
+    missing = required.select { |r| col_index[r].nil? }
+    unless missing.empty?
+      @error = "Colunas obrigatórias não encontradas: #{missing.map(&:to_s).join(', ')}. As colunas devem ser: #{COLUMN_MAP.keys.join(', ')}"
+      return erb :import
+    end
+
+    imported = 0
+    errors = []
+
+    (2..sheet.last_row).each do |row_num|
+      row = sheet.row(row_num)
+      next if row.compact.empty?
+
+      begin
+        t_date = parse_xlsx_date(row[col_index[:transaction_date]])
+        desc   = row[col_index[:description]].to_s.strip
+        amount = parse_xlsx_currency(row[col_index[:amount]])
+        t_type = row[col_index[:transaction_type]].to_s.strip
+
+        next if desc.empty? || amount <= 0 || t_type.empty?
+
+        data = {
+          transaction_date: t_date || Date.today,
+          description: desc,
+          amount: amount,
+          transaction_type: t_type,
+          category: col_index[:category] ? row[col_index[:category]].to_s.strip : nil,
+          payment_method: col_index[:payment_method] ? row[col_index[:payment_method]].to_s.strip : nil,
+          financing_type: col_index[:financing_type] ? row[col_index[:financing_type]].to_s.strip : nil,
+          installments: col_index[:installments] ? row[col_index[:installments]].to_i : nil,
+          due_date: col_index[:due_date] ? parse_xlsx_date(row[col_index[:due_date]]) : nil,
+          bank: col_index[:bank] ? row[col_index[:bank]].to_s.strip : nil,
+          card_name: col_index[:card_name] ? row[col_index[:card_name]].to_s.strip : nil,
+          status: col_index[:status] ? row[col_index[:status]].to_s.strip : 'Pendente',
+          user_email: current_user_email
+        }
+        data[:installments] = nil if data[:installments] == 0
+
+        save_transaction(data)
+        imported += 1
+      rescue => e
+        errors << "Linha #{row_num}: #{e.message}"
+      end
+    end
+
+    msg = "#{imported} transações importadas com sucesso!"
+    unless errors.empty?
+      msg += " | #{errors.size} erro(s): #{errors.first(5).join('; ')}"
+      msg += " (+#{errors.size - 5} mais...)" if errors.size > 5
+    end
+    session[:notice] = msg
+    redirect '/'
+  rescue => e
+    @error = "Erro ao processar arquivo: #{e.message}"
+    erb :import
+  end
 end
 
 post '/transactions' do
@@ -603,7 +751,7 @@ get '/dashboard' do
 
   @debts.each do |debt|
     amount = debt[:amount].to_f
-    paid_installments = debt[:paid_installments] || []
+    paid_installments = debt.paid_installments || []
     if debt[:installments] && debt[:installments] > 1 && debt[:due_date]
       parcel_value = amount / debt[:installments].to_f
       (1..debt[:installments]).each do |i|

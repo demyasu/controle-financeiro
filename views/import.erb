@@ -1,0 +1,61 @@
+<h1>📥 Importar Transações</h1>
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">Importar arquivo XLSX</h5>
+  </div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label">Selecione o arquivo (.xlsx)</label>
+        <input type="file" class="form-control" name="file" accept=".xlsx" required>
+      </div>
+      <button type="submit" class="btn btn-primary">📤 Importar</button>
+      <a href="/" class="btn btn-secondary">Cancelar</a>
+    </form>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">
+    <h5 class="mb-0">📋 Formato esperado do XLSX</h5>
+  </div>
+  <div class="card-body">
+    <p>A primeira linha do arquivo deve conter os cabeçalhos abaixo. As colunas podem estar em qualquer ordem.</p>
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+          <tr>
+            <th>Coluna</th>
+            <th>Descrição</th>
+            <th>Obrigatório</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Data</td><td>Data da transação (dd/mm/aaaa)</td><td><span class="badge bg-danger">Sim</span></td></tr>
+          <tr><td>Descrição</td><td>Descrição do lançamento</td><td><span class="badge bg-danger">Sim</span></td></tr>
+          <tr><td>Valor</td><td>Valor numérico (ex: 150.50 ou 150,50)</td><td><span class="badge bg-danger">Sim</span></td></tr>
+          <tr><td>Tipo</td><td>Gasto, Salário Mensal, Ganho Extra, Financiamento, Crédito Parcelado, Pix Parcelado</td><td><span class="badge bg-danger">Sim</span></td></tr>
+          <tr><td>Categoria</td><td>Alimentação, Energia, Água, Internet, etc.</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>Pagamento</td><td>Dinheiro, Débito, Crédito, Vale Alimentação</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>TipoFinanciamento</td><td>cartao, financiamento, pix</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>Parcelas</td><td>Número de parcelas (ex: 12)</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>Vencimento</td><td>Data de vencimento (dd/mm/aaaa)</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>Banco</td><td>Nome do banco</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>Cartão</td><td>Nome do cartão</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>Status</td><td>Pendente ou Pago</td><td><span class="badge bg-secondary">Não</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">
+    <h5 class="mb-0">📎 Download modelo</h5>
+  </div>
+  <div class="card-body">
+    <p>Baixe o arquivo modelo para preencher com seus dados:</p>
+    <a href="/import/template" class="btn btn-success">📥 Baixar Modelo XLSX</a>
+  </div>
+</div>
