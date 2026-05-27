@@ -12,3 +12,4 @@ gem 'net-smtp', '~> 0.5'
 # Suporte Ruby 3.4+ (gems que deixaram de ser padrão)
 gem 'logger'
 gem 'ostruct'
+gem 'csv'
