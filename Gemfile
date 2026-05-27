@@ -8,3 +8,7 @@ gem 'puma', '~> 6.0'
 gem 'sequel', '~> 5.0'
 gem 'pg', '~> 1.5'
 gem 'net-smtp', '~> 0.5'
+
+# Suporte Ruby 3.4+ (gems que deixaram de ser padrão)
+gem 'logger'
+gem 'ostruct'
