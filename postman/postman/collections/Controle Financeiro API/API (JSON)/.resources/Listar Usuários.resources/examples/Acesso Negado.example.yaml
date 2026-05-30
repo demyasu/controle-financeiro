@@ -1,0 +1,15 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/api/users"
+  method: GET
+  headers:
+    Authorization: Bearer {{api_key}}
+response:
+  statusCode: 403
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: '{"error": "Acesso negado"}'
+order: 2000

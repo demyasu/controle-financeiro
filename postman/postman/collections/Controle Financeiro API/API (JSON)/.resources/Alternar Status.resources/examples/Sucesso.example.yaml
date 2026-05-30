@@ -1,0 +1,20 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/api/transactions/{{transaction_id}}/toggle_status"
+  method: POST
+  headers:
+    Authorization: Bearer {{api_key}}
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "id": 1,
+        "status": "Pago",
+        "description": "Supermercado"
+      }
+order: 1000

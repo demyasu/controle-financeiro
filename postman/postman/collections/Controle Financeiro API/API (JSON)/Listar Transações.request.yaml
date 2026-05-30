@@ -1,0 +1,30 @@
+$kind: http-request
+url: "{{base_url}}/api/transactions?start_date={{start_date}}&end_date={{end_date}}"
+method: GET
+headers:
+  Authorization: Bearer {{api_key}}
+queryParams:
+  - key: start_date
+    value: "{{start_date}}"
+  - key: end_date
+    value: "{{end_date}}"
+  - key: filter_type
+    value: ""
+    disabled: true
+  - key: filter_category
+    value: ""
+    disabled: true
+  - key: filter_desc
+    value: ""
+    disabled: true
+  - key: page
+    value: "1"
+    disabled: true
+  - key: per_page
+    value: "23"
+    disabled: true
+  - key: user
+    value: ""
+    disabled: true
+examples: ./.resources/Listar Transações.resources/examples
+order: 2000

@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/authenticate"
+method: POST
+headers:
+  Content-Type: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    email: "{{email}}"
+    password: "{{password}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 200) {
+        console.log('✅  Login OK! Verifique seu email para pegar o código 2FA.');
+      } else {
+        console.error('❌  Login falhou. Verifique email e senha.');
+      }
+    language: text/javascript
+examples: ./.resources/Login.resources/examples
+order: 1000

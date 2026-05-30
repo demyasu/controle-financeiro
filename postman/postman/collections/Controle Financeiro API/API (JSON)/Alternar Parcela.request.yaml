@@ -1,0 +1,12 @@
+$kind: http-request
+url: "{{base_url}}/api/transactions/{{transaction_id}}/toggle_installment"
+method: POST
+headers:
+  Authorization: Bearer {{api_key}}
+  Content-Type: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    installment: "1"
+examples: ./.resources/Alternar Parcela.resources/examples
+order: 8000

@@ -1,0 +1,14 @@
+$kind: http-request
+url: "{{base_url}}/api/transactions/bulk_delete"
+method: POST
+headers:
+  Authorization: Bearer {{api_key}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "ids": [1, 2, 3]
+    }
+examples: ./.resources/Excluir em Lote.resources/examples
+order: 6000

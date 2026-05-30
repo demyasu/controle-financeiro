@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{base_url}}/api/transactions/{{transaction_id}}"
+method: PATCH
+headers:
+  Authorization: Bearer {{api_key}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "description": "{{description}} atualizado",
+      "amount": {{amount}}
+    }
+examples: ./.resources/Atualizar Transação.resources/examples
+order: 4000

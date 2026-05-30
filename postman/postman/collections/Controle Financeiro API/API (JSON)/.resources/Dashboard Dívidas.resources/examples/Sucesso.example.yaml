@@ -1,0 +1,58 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/api/dashboard"
+  method: GET
+  headers:
+    Authorization: Bearer {{api_key}}
+  queryParams:
+    - key: filter_type
+      value: ""
+      disabled: true
+    - key: filter_desc
+      value: ""
+      disabled: true
+    - key: filter_status
+      value: ""
+      disabled: true
+    - key: filter_vencimento
+      value: ""
+      disabled: true
+    - key: filter_valor
+      value: ""
+      disabled: true
+    - key: filter_vencimento_start
+      value: ""
+      disabled: true
+    - key: page
+      value: "1"
+      disabled: true
+    - key: per_page
+      value: "23"
+      disabled: true
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "page": 1,
+        "per_page": 23,
+        "total": 5,
+        "total_pages": 1,
+        "total_paid": 500.0,
+        "total_remaining": 1200.0,
+        "data": [
+          {
+            "id": 1,
+            "description": "Financiamento Carro (Parcela 1 de 24)",
+            "amount": 850.0,
+            "due_date": "2026-06-15",
+            "is_paid": false,
+            "vencimento_status": "Em dia"
+          }
+        ]
+      }
+order: 1000

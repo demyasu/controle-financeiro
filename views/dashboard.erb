@@ -1,4 +1,4 @@
-<h1>🍀 Dashboard - Dívidas a Vencer</h1>
+<h1> Dashboard - D&iacute;vidas a Vencer</h1>
 
 <% if @all_users %>
 <div class="row mb-3">
@@ -20,19 +20,19 @@
 <div class="row mb-4">
   <div class="col-md-4">
     <div class="stat-card">
-      <h5 class="text-center">💰 Total Pago</h5>
+      <h5 class="text-center"> Total Pago</h5>
       <h3 class="text-success text-center"><%= format_currency(@total_paid || 0) %></h3>
     </div>
   </div>
   <div class="col-md-4">
     <div class="stat-card">
-      <h5 class="text-center">⏳ Total Restante</h5>
+      <h5 class="text-center"> Total Restante</h5>
       <h3 class="text-warning text-center"><%= format_currency(@total_remaining || 0) %></h3>
     </div>
   </div>
   <div class="col-md-4">
     <div class="stat-card">
-      <h5 class="text-center">📊 Total Geral</h5>
+      <h5 class="text-center"> Total Geral</h5>
       <h3 class="text-primary text-center"><%= format_currency((@total_paid || 0) + (@total_remaining || 0)) %></h3>
     </div>
   </div>
@@ -42,7 +42,7 @@
   <div class="col-md-12">
     <div class="card">
       <div class="card-header">
-        <h5 class="mb-0 text-center">📈 Distribuição de Valores - Pago vs Restante</h5>
+        <h5 class="mb-0 text-center"> Distribui&ccedil;&atilde;o de Valores - Pago vs Restante</h5>
       </div>
       <div class="card-body">
         <%
@@ -52,7 +52,7 @@
         %>
         <div style="padding: 10px 0;">
           <div style="display: flex; align-items: center; margin-bottom: 15px;">
-            <span style="width: 100px; font-weight: 600;">✅ Pago</span>
+            <span style="width: 100px; font-weight: 600;"> Pago</span>
             <div style="flex: 1; height: 32px; background: #e9ecef; border-radius: 8px; overflow: hidden;">
               <div style="width: <%= pct_paid %>%; height: 100%; background: linear-gradient(90deg, #28a745, #5dd879); border-radius: 8px; transition: width 0.5s;"></div>
             </div>
@@ -61,7 +61,7 @@
             </span>
           </div>
           <div style="display: flex; align-items: center; margin-bottom: 5px;">
-            <span style="width: 100px; font-weight: 600;">⏳ Restante</span>
+            <span style="width: 100px; font-weight: 600;"> Restante</span>
             <div style="flex: 1; height: 32px; background: #e9ecef; border-radius: 8px; overflow: hidden;">
               <div style="width: <%= pct_remaining %>%; height: 100%; background: linear-gradient(90deg, #ffc107, #ffdb6e); border-radius: 8px; transition: width 0.5s;"></div>
             </div>
@@ -81,89 +81,204 @@
 <div class="row mb-4">
   <div class="col-md-12">
     <div class="card">
-      <div class="card-header">
-        <h5 class="mb-0">📅 Detalhes das Dívidas</h5>
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"> Detalhes das D&iacute;vidas</h5>
+        <div>
+          <form action="/transactions/bulk_delete" method="post" id="dashBulkDeleteForm" style="display:inline;">
+            <button type="button" class="btn btn-danger btn-sm" id="dashDeleteSelectedBtn" onclick="confirmDashBulkDelete()" disabled><i class="bi bi-trash"></i> Excluir Selecionados</button>
+          </form>
+        </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-striped table-hover mb-0">
-            <thead class="table-dark">
-              <tr>
-                <th class="text-center">🏦️ Tipo</th>
-                <th>📝 Descrição</th>
-                <th class="text-end">💵 Valor (R$)</th>
-                <th>🏦️ Banco/Cartão</th>
-                <th class="text-center">📅 Vencimento</th>
-                <th class="text-center">🔢 Parcelas</th>
-                <th class="text-center">📌 Pendente</th>
-                <th class="text-center">📊 Vencimento</th>
-                <th class="text-center">⚙️ Ação</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% if @upcoming.empty? %>
+          <form method="get" id="dashFilterForm">
+            <% if params[:user] && !params[:user].empty? %>
+              <input type="hidden" name="user" value="<%= params[:user] %>">
+            <% end %>
+            <table class="table table-striped table-hover mb-0">
+              <thead class="table-dark">
                 <tr>
-                  <td colspan="9" class="text-center text-muted py-5">
-                    <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #28a745;"></i>
-                    <p class="mt-2">Nenhuma dívida pendente encontrada.</p>
-                  </td>
+                  <th class="text-center" style="width: 40px;">
+                    <input type="checkbox" id="dashSelectAll" onchange="toggleDashSelectAll(this)" style="transform: scale(1.3);">
+                  </th>
+                  <th class="text-center"> Tipo</th>
+                  <th> Descri&ccedil;&atilde;o</th>
+                  <th class="text-end"> Valor (R$)</th>
+                  <th> Banco/Cart&atilde;o</th>
+                  <th class="text-center"> Vencimento</th>
+                  <th class="text-center"> Parcelas</th>
+                  <th class="text-center"> Pendente</th>
+                  <th class="text-center"> Status</th>
+                  <th class="text-center"> A&ccedil;&atilde;o</th>
                 </tr>
-              <% else %>
-                <% @upcoming.each do |debt| %>
+                <tr style="background: #2c3e50;">
+                  <th style="padding: 6px; text-align: center;"></th>
+                  <th class="text-center" style="padding: 6px;">
+                    <select class="form-select form-select-sm" name="filter_type" onchange="this.form.submit()" style="font-size: 0.75rem;">
+                      <option value="">Todos</option>
+                      <% @dashboard_types.each do |t| %>
+                        <option value="<%= t %>" <%= 'selected' if params[:filter_type] == t %>>
+                          <%= { 'cartao' => 'Cartão', 'financiamento' => 'Financiamento', 'pix' => 'Pix', 'credito_parcelado' => 'Crédito', 'outros' => 'Outros' }[t] || t %>
+                        </option>
+                      <% end %>
+                    </select>
+                  </th>
+                  <th style="padding: 6px;">
+                    <input type="text" class="form-control form-control-sm" name="filter_desc" placeholder="Descri&ccedil;&atilde;o..." value="<%= params[:filter_desc] %>" onchange="this.form.submit()" style="font-size: 0.75rem;">
+                  </th>
+                  <th style="padding: 6px;">
+                    <select class="form-select form-select-sm" name="filter_valor" onchange="this.form.submit()" style="font-size: 0.75rem;">
+                      <option value="">Todos</option>
+                      <% @filter_valores.each do |v| %>
+                        <option value="<%= v %>" <%= 'selected' if params[:filter_valor] == v.to_s %>><%= format('%.2f', v) %></option>
+                      <% end %>
+                    </select>
+                  </th>
+                  <th style="padding: 6px;">
+                    <input type="text" class="form-control form-control-sm" name="filter_bank" placeholder="Banco..." value="<%= params[:filter_bank] %>" onchange="this.form.submit()" style="font-size: 0.75rem;">
+                  </th>
+                  <th class="text-center" style="padding: 6px;">
+                    <input type="date" class="form-control form-control-sm" name="filter_vencimento_start" value="<%= params[:filter_vencimento_start] %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px;">
+                  </th>
+                  <th class="text-center" style="padding: 6px;">
+                    <select class="form-select form-select-sm" name="filter_installments" onchange="this.form.submit()" style="font-size: 0.75rem;">
+                      <option value="">Todas</option>
+                      <option value="1" <%= 'selected' if params[:filter_installments] == '1' %>>&Aacute; vista</option>
+                      <option value="2" <%= 'selected' if params[:filter_installments] == '2' %>>2x</option>
+                      <option value="3" <%= 'selected' if params[:filter_installments] == '3' %>>3x</option>
+                      <option value="4" <%= 'selected' if params[:filter_installments] == '4' %>>4x</option>
+                      <option value="5" <%= 'selected' if params[:filter_installments] == '5' %>>5x</option>
+                      <option value="6" <%= 'selected' if params[:filter_installments] == '6' %>>6x</option>
+                      <option value="7" <%= 'selected' if params[:filter_installments] == '7' %>>7x</option>
+                      <option value="8" <%= 'selected' if params[:filter_installments] == '8' %>>8x</option>
+                      <option value="9" <%= 'selected' if params[:filter_installments] == '9' %>>9x</option>
+                      <option value="10" <%= 'selected' if params[:filter_installments] == '10' %>>10x</option>
+                      <option value="12" <%= 'selected' if params[:filter_installments] == '12' %>>12x</option>
+                    </select>
+                  </th>
+                  <th class="text-center" style="padding: 6px;">
+                    <select class="form-select form-select-sm" name="filter_status" onchange="this.form.submit()" style="font-size: 0.75rem;">
+                      <option value="">Todos</option>
+                      <option value="Pendente" <%= 'selected' if params[:filter_status] == 'Pendente' %>>Pendente</option>
+                      <option value="Pago" <%= 'selected' if params[:filter_status] == 'Pago' %>>Pago</option>
+                    </select>
+                  </th>
+                  <th class="text-center" style="padding: 6px;">
+                    <select class="form-select form-select-sm" name="filter_vencimento" onchange="this.form.submit()" style="font-size: 0.75rem;">
+                      <option value="">Todos</option>
+                      <option value="Vencida" <%= 'selected' if params[:filter_vencimento] == 'Vencida' %>>Vencida</option>
+                      <option value="Vence hoje" <%= 'selected' if params[:filter_vencimento] == 'Vence hoje' %>>Vence hoje</option>
+                      <option value="Em dia" <%= 'selected' if params[:filter_vencimento] == 'Em dia' %>>Em dia</option>
+                      <option value="Sem vencimento" <%= 'selected' if params[:filter_vencimento] == 'Sem vencimento' %>>Sem vencimento</option>
+                    </select>
+                  </th>
+                  <th style="padding: 6px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if @upcoming.empty? %>
                   <tr>
-                    <td class="text-center">
-                      <% if debt[:financing_type] == 'cartao' %>
-                        <span class="badge bg-primary">Cartão</span>
-                      <% elsif debt[:financing_type] == 'financiamento' %>
-                        <span class="badge bg-warning">Financiamento</span>
-                      <% elsif debt[:financing_type] == 'pix' %>
-                        <span class="badge bg-info">Pix</span>
-                      <% elsif debt[:transaction_type] == 'Crédito Parcelado' %>
-                        <span class="badge bg-primary">Crédito</span>
-                      <% elsif debt[:transaction_type] == 'Pix Parcelado' %>
-                        <span class="badge bg-info">Pix</span>
-                      <% elsif debt[:transaction_type] == 'Financiamento' %>
-                        <span class="badge bg-warning">Financiamento</span>
-                      <% else %>
-                        <span class="badge bg-secondary"><%= debt[:category] %></span>
-                      <% end %>
-                    </td>
-                    <td><%= debt[:description] %></td>
-                    <td class="text-end fw-bold"><%= format_currency(debt[:amount]) %></td>
-                    <td><%= debt[:bank] || debt[:card_name] || '-' %></td>
-                    <td class="text-center"><%= debt[:due_date] ? debt[:due_date].strftime('%d/%m/%Y') : '-' %></td>
-                    <td class="text-center"><%= debt[:installments] ? "#{debt[:current_installment] || 1} de #{debt[:installments]}" : '-' %></td>
-                    <td class="text-center">
-                      <% if debt[:is_paid] %>
-                        <span class="badge bg-success">Pago</span>
-                      <% else %>
-                        <span class="badge bg-warning">Pendente</span>
-                      <% end %>
-                    </td>
-                    <td class="text-center">
-                      <% if debt[:vencimento_status] == 'Sem vencimento' %>
-                        <span class="badge bg-secondary">Sem vencimento</span>
-                      <% elsif debt[:vencimento_status] == 'Vencida' %>
-                        <span class="badge bg-danger">Vencida</span>
-                      <% elsif debt[:vencimento_status] == 'Vence hoje' %>
-                        <span class="badge bg-warning">Vence hoje</span>
-                      <% else %>
-                        <span class="badge bg-success">Em dia</span>
-                      <% end %>
-                    </td>
-                    <td class="text-center">
-                      <form action="/transactions/<%= debt[:id] %>/toggle_installment" method="post" style="display:inline;">
-                        <input type="hidden" name="installment" value="<%= debt[:current_installment] %>">
-                        <button type="submit" class="btn btn-sm <%= debt[:is_paid] ? 'btn-warning' : 'btn-success' %>">
-                          <%= debt[:is_paid] ? '↩️ Pendente' : '✓ Pago' %>
-                        </button>
-                      </form>
+                    <td colspan="10" class="text-center text-muted py-5">
+                      <i class="bi bi-check-circle-fill" style="font-size: 3rem; color: #28a745;"></i>
+                      <p class="mt-2">Nenhuma d&iacute;vida pendente encontrada.</p>
                     </td>
                   </tr>
+                <% else %>
+                  <% @upcoming.each do |debt| %>
+                    <tr>
+                      <td class="py-3 text-center" style="width: 40px;">
+                        <input type="checkbox" class="dash-transaction-checkbox" value="<%= debt[:id] %>" form="dashBulkDeleteForm" name="ids[]" style="transform: scale(1.3);">
+                      </td>
+                      <td class="text-center">
+                        <% if debt[:financing_type] == 'cartao' %>
+                          <span class="badge bg-primary">Cart&atilde;o</span>
+                        <% elsif debt[:financing_type] == 'financiamento' %>
+                          <span class="badge bg-warning">Financiamento</span>
+                        <% elsif debt[:financing_type] == 'pix' %>
+                          <span class="badge bg-info">Pix</span>
+                        <% elsif debt[:transaction_type] == 'Crédito Parcelado' %>
+                          <span class="badge bg-primary">Cr&eacute;dito</span>
+                        <% elsif debt[:transaction_type] == 'Pix Parcelado' %>
+                          <span class="badge bg-info">Pix</span>
+                        <% elsif debt[:transaction_type] == 'Financiamento' %>
+                          <span class="badge bg-warning">Financiamento</span>
+                        <% else %>
+                          <span class="badge bg-secondary"><%= debt[:category] %></span>
+                        <% end %>
+                      </td>
+                      <td><%= debt[:description] %></td>
+                      <td class="text-end fw-bold"><%= format_currency(debt[:amount]) %></td>
+                      <td><%= debt[:bank] || debt[:card_name] || '-' %></td>
+                      <td class="text-center"><%= debt[:due_date] ? debt[:due_date].strftime('%d/%m/%Y') : '-' %></td>
+                      <td class="text-center"><%= debt[:installments] ? "#{debt[:current_installment] || 1} de #{debt[:installments]}" : '-' %></td>
+                      <td class="text-center">
+                        <% if debt[:is_paid] %>
+                          <span class="badge bg-success">Pago</span>
+                        <% else %>
+                          <span class="badge bg-warning">Pendente</span>
+                        <% end %>
+                      </td>
+                      <td class="text-center">
+                        <% if debt[:vencimento_status] == 'Sem vencimento' %>
+                          <span class="badge bg-secondary">Sem vencimento</span>
+                        <% elsif debt[:vencimento_status] == 'Vencida' %>
+                          <span class="badge bg-danger">Vencida</span>
+                        <% elsif debt[:vencimento_status] == 'Vence hoje' %>
+                          <span class="badge bg-warning">Vence hoje</span>
+                        <% else %>
+                          <span class="badge bg-success">Em dia</span>
+                        <% end %>
+                      </td>
+                      <td class="text-center" style="white-space: nowrap;">
+                        <form action="/transactions/<%= debt[:id] %>/toggle_installment" method="post" style="display:inline;">
+                          <input type="hidden" name="installment" value="<%= debt[:current_installment] %>">
+                          <button type="submit" class="btn btn-sm <%= debt[:is_paid] ? 'btn-warning' : 'btn-success' %>" title="<%= debt[:is_paid] ? 'Marcar Pendente' : 'Marcar Pago' %>">
+                            <i class="bi bi-check-lg"></i>
+                          </button>
+                        </form>
+                        <form action="/transactions/<%= debt[:id] %>" method="post" style="display:inline;" onsubmit="return confirm('Excluir esta transa&ccedil;&atilde;o?')">
+                          <input type="hidden" name="_method" value="delete">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Excluir"><i class="bi bi-trash"></i></button>
+                        </form>
+                      </td>
+                    </tr>
+                  <% end %>
                 <% end %>
-              <% end %>
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+            <% if @dash_total_pages > 1 %>
+            <div class="d-flex justify-content-between align-items-center p-3">
+              <div class="text-muted small">
+                Mostrando página <%= @dash_page %> de <%= @dash_total_pages %>
+                (<%= @dash_total_items %> registros)
+              </div>
+              <nav>
+                <ul class="pagination pagination-sm mb-0">
+                  <li class="page-item <%= 'disabled' if @dash_page <= 1 %>">
+                    <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('dash_page' => 1)) %>">&laquo;</a>
+                  </li>
+                  <li class="page-item <%= 'disabled' if @dash_page <= 1 %>">
+                    <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('dash_page' => @dash_page - 1)) %>">&lsaquo;</a>
+                  </li>
+                  <% dash_start = [@dash_page - 2, 1].max %>
+                  <% dash_end = [dash_start + 4, @dash_total_pages].min %>
+                  <% dash_start = [dash_end - 4, 1].max %>
+                  <% (dash_start..dash_end).each do |p| %>
+                    <li class="page-item <%= 'active' if p == @dash_page %>">
+                      <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('dash_page' => p)) %>"><%= p %></a>
+                    </li>
+                  <% end %>
+                  <li class="page-item <%= 'disabled' if @dash_page >= @dash_total_pages %>">
+                    <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('dash_page' => @dash_page + 1)) %>">&rsaquo;</a>
+                  </li>
+                  <li class="page-item <%= 'disabled' if @dash_page >= @dash_total_pages %>">
+                    <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('dash_page' => @dash_total_pages)) %>">&raquo;</a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            <% end %>
+          </form>
         </div>
       </div>
     </div>
@@ -172,8 +287,38 @@
 
 <div class="row">
   <div class="col-md-12 text-center">
-    <a href="/" class="btn btn-primary btn-lg">🏠 Voltar para Início</a>
+    <a href="/" class="btn btn-primary btn-lg"> Voltar para In&iacute;cio</a>
   </div>
 </div>
 
+<script>
+function toggleDashSelectAll(source) {
+  document.querySelectorAll('.dash-transaction-checkbox').forEach(function(cb) {
+    cb.checked = source.checked;
+  });
+  updateDashDeleteButton();
+}
 
+document.querySelectorAll('.dash-transaction-checkbox').forEach(function(cb) {
+  cb.addEventListener('change', updateDashDeleteButton);
+});
+
+function updateDashDeleteButton() {
+  var checked = document.querySelectorAll('.dash-transaction-checkbox:checked').length;
+  var btn = document.getElementById('dashDeleteSelectedBtn');
+  btn.disabled = checked === 0;
+  if (checked > 0) {
+    btn.innerHTML = '<i class="bi bi-trash"></i> Excluir (' + checked + ')';
+  } else {
+    btn.innerHTML = '<i class="bi bi-trash"></i> Excluir Selecionados';
+  }
+}
+
+function confirmDashBulkDelete() {
+  var checked = document.querySelectorAll('.dash-transaction-checkbox:checked').length;
+  if (checked === 0) return;
+  if (confirm('Excluir ' + checked + ' transa\u00e7\u00f5es?')) {
+    document.getElementById('dashBulkDeleteForm').submit();
+  }
+}
+</script>

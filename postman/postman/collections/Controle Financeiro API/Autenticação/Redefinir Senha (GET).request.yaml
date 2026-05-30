@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{base_url}}/reset_password/{{reset_token}}"
+method: GET
+order: 7000

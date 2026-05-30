@@ -1,0 +1,19 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/verify_token"
+  method: POST
+  headers:
+    Content-Type: application/x-www-form-urlencoded
+  body:
+    type: urlencoded
+    content:
+      code: "{{verification_code}}"
+response:
+  statusCode: 302
+  statusText: OK
+  headers:
+    Location: /
+  body:
+    type: text
+    content: ""
+order: 1000

@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/api/users"
+method: GET
+headers:
+  Authorization: Bearer {{api_key}}
+examples: ./.resources/Listar Usuários.resources/examples
+order: 1000

@@ -1,0 +1,483 @@
+{
+  "info": {
+    "name": "Controle Financeiro API",
+    "description": "API do sistema Controle Financeiro\n\n## Base URL\n`{{base_url}}` (default: `http://localhost:8082`)\n\n## Autenticação\n- **API Key**: Enviar via header `Authorization: Bearer {{api_key}}` ou query param `?api_key={{api_key}}`\n- **Session**: Fazer login via `/authenticate` e usar cookie de sessão\n\n## Fluxo de uso\n1. Execute **Login** → recebe código por email\n2. Execute **Verificar Código 2FA** com o código recebido\n3. Use qualquer endpoint protegido\n\n> ✅ Todos os endpoints retornam JSON formatado.\n> ✅ Endpoints com `Authorization: Bearer {{api_key}}` não precisam de login (exceto criação de transações que precisa do `user_email` da sessão).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "controle-financeiro"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "const skipPaths = ['/authenticate','/verify_token','/register','/forgot_password','/reset_password','/logout'];",
+          "const reqPath = pm.request.url.getPath();",
+          "const shouldSkip = skipPaths.some(p => reqPath.startsWith(p));",
+          "if (shouldSkip) return;",
+          "",
+          "if (reqPath.startsWith('/api/')) {",
+          "  const hasAuth = pm.request.headers.one('Authorization');",
+          "  if (hasAuth && hasAuth.value.includes('Bearer')) return;",
+          "  console.warn('⚠️  Endpoint API sem API Key. Adicione header: Authorization: Bearer {{api_key}}');",
+          "  return;",
+          "}",
+          "",
+          "const authed = pm.collectionVariables.get('session_valid') === 'true';",
+          "if (authed) return;",
+          "const hasCookie = pm.cookies.has('rack.session');",
+          "if (hasCookie) { pm.collectionVariables.set('session_valid', 'true'); return; }",
+          "",
+          "console.warn('⚠️  Sessão não encontrada. Tentando login automático...');",
+          "const loginUrl = pm.collectionVariables.get('base_url') || pm.variables.get('base_url');",
+          "pm.sendRequest({",
+          "  url: loginUrl + '/authenticate',",
+          "  method: 'POST',",
+          "  header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "  body: {",
+          "    mode: 'urlencoded',",
+          "    urlencoded: [",
+          "      { key: 'email', value: pm.collectionVariables.get('email') || '' },",
+          "      { key: 'password', value: pm.collectionVariables.get('password') || '' }",
+          "    ]",
+          "  }",
+          "}, function (err, res) {",
+          "  if (err) { console.error('❌  Erro no login automático:', err); return; }",
+          "  if (res.code === 200) {",
+          "    console.warn('📧  Login OK! Código 2FA enviado. Execute \"Verificar Código 2FA\" com o código recebido.');",
+          "  } else {",
+          "    console.error('❌  Login automático falhou. Execute o fluxo manual.');",
+          "  }",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "if (pm.response.code === 302 && pm.response.headers.get('Location') !== '/login') {",
+          "  pm.collectionVariables.set('session_valid', 'true');",
+          "}",
+          "if (pm.response.code === 403) {",
+          "  console.error('❌  Acesso negado. Verifique se a API Key está correta ou se a sessão está ativa.');",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Autenticação",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "email", "value": "{{email}}" },
+              { "key": "password", "value": "{{password}}" }
+            ]},
+            "url": { "raw": "{{base_url}}/authenticate", "host": ["{{base_url}}"], "path": ["authenticate"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  console.log('✅  Login OK! Verifique seu email para pegar o código 2FA.');",
+                  "} else {",
+                  "  console.error('❌  Login falhou. Verifique email e senha.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "text/html;charset=utf-8" }]
+            },
+            {
+              "name": "Credenciais inválidas",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "text/html;charset=utf-8" }]
+            }
+          ]
+        },
+        {
+          "name": "Verificar Código 2FA",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "code", "value": "{{verification_code}}" }
+            ]},
+            "url": { "raw": "{{base_url}}/verify_token", "host": ["{{base_url}}"], "path": ["verify_token"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 302) {",
+                  "  pm.collectionVariables.set('session_valid', 'true');",
+                  "  console.log('✅  Autenticado!');",
+                  "} else {",
+                  "  console.error('❌  Código inválido.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 302,
+              "header": [{ "key": "Location", "value": "/" }]
+            },
+            {
+              "name": "Código inválido",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "text/html;charset=utf-8" }]
+            }
+          ]
+        },
+        {
+          "name": "Solicitar Cadastro",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "email", "value": "{{new_email}}" }
+            ]},
+            "url": { "raw": "{{base_url}}/register", "host": ["{{base_url}}"], "path": ["register"] }
+          }
+        },
+        {
+          "name": "Confirmar Cadastro (GET)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/register/{{registration_token}}", "host": ["{{base_url}}"], "path": ["register", "{{registration_token}}"] }
+          }
+        },
+        {
+          "name": "Definir Senha (POST)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "username", "value": "{{username}}" },
+              { "key": "password", "value": "{{new_password}}" },
+              { "key": "confirm_password", "value": "{{new_password}}" }
+            ]},
+            "url": { "raw": "{{base_url}}/register/{{registration_token}}", "host": ["{{base_url}}"], "path": ["register", "{{registration_token}}"] }
+          }
+        },
+        {
+          "name": "Esqueci Senha",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "email", "value": "{{email}}" }
+            ]},
+            "url": { "raw": "{{base_url}}/forgot_password", "host": ["{{base_url}}"], "path": ["forgot_password"] }
+          }
+        },
+        {
+          "name": "Redefinir Senha (GET)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/reset_password/{{reset_token}}", "host": ["{{base_url}}"], "path": ["reset_password", "{{reset_token}}"] }
+          }
+        },
+        {
+          "name": "Redefinir Senha (POST)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "password", "value": "{{new_password}}" },
+              { "key": "confirm_password", "value": "{{new_password}}" }
+            ]},
+            "url": { "raw": "{{base_url}}/reset_password/{{reset_token}}", "host": ["{{base_url}}"], "path": ["reset_password", "{{reset_token}}"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/logout", "host": ["{{base_url}}"], "path": ["logout"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.collectionVariables.set('session_valid', 'false');",
+                  "console.log('🔓  Sessão encerrada.');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "API (JSON)",
+      "item": [
+        {
+          "name": "Listar Usuários",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{api_key}}" }],
+            "url": { "raw": "{{base_url}}/api/users", "host": ["{{base_url}}"], "path": ["api", "users"] }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"email\": \"admin@exemplo.com\",\n    \"username\": \"Admin\",\n    \"admin\": true,\n    \"created_at\": \"2026-05-28T03:29:27+00:00\"\n  }\n]"
+            },
+            {
+              "name": "Acesso Negado",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\"error\": \"Acesso negado\"}"
+            }
+          ]
+        },
+        {
+          "name": "Listar Transações",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{api_key}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/transactions?start_date={{start_date}}&end_date={{end_date}}",
+              "host": ["{{base_url}}"], "path": ["api", "transactions"],
+              "query": [
+                { "key": "start_date", "value": "{{start_date}}" },
+                { "key": "end_date", "value": "{{end_date}}" },
+                { "key": "filter_type", "value": "", "disabled": true },
+                { "key": "filter_category", "value": "", "disabled": true },
+                { "key": "filter_desc", "value": "", "disabled": true },
+                { "key": "page", "value": "1", "disabled": true },
+                { "key": "per_page", "value": "23", "disabled": true },
+                { "key": "user", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"page\": 1,\n  \"per_page\": 23,\n  \"total\": 42,\n  \"total_pages\": 2,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"transaction_date\": \"2026-05-28\",\n      \"description\": \"Supermercado\",\n      \"amount\": 150.50,\n      \"transaction_type\": \"Gasto\",\n      \"category\": \"Alimentação\",\n      \"payment_method\": \"Pix\",\n      \"status\": \"Pendente\",\n      \"installments\": null,\n      \"due_date\": null,\n      \"user_email\": \"user@email.com\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "Acesso Negado",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\"error\": \"Acesso negado\"}"
+            }
+          ]
+        },
+        {
+          "name": "Criar Transação",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transaction_date\": \"{{transaction_date}}\",\n  \"description\": \"{{description}}\",\n  \"amount\": {{amount}},\n  \"transaction_type\": \"{{transaction_type}}\",\n  \"category\": \"{{category}}\",\n  \"payment_method\": \"{{payment_method}}\",\n  \"status\": \"Pendente\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/transactions", "host": ["{{base_url}}"], "path": ["api", "transactions"] }
+          },
+          "response": [
+            {
+              "name": "Criado",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 10,\n  \"transaction_date\": \"2026-05-28\",\n  \"description\": \"Nova transação\",\n  \"amount\": 100.0,\n  \"transaction_type\": \"Gasto\",\n  \"category\": \"Alimentação\",\n  \"payment_method\": \"Pix\",\n  \"status\": \"Pendente\"\n}"
+            },
+            {
+              "name": "Acesso Negado",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\"error\": \"Acesso negado\"}"
+            }
+          ]
+        },
+        {
+          "name": "Atualizar Transação",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"{{description}} atualizado\",\n  \"amount\": {{amount}}\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/transactions/{{transaction_id}}", "host": ["{{base_url}}"], "path": ["api", "transactions", "{{transaction_id}}"] }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"description\": \"Nova transação atualizado\",\n  \"amount\": 100.0,\n  \"status\": \"Pendente\"\n}"
+            },
+            {
+              "name": "Não encontrada",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\"error\": \"Transação não encontrada\"}"
+            }
+          ]
+        },
+        {
+          "name": "Excluir Transação",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{api_key}}" }],
+            "url": { "raw": "{{base_url}}/api/transactions/{{transaction_id}}", "host": ["{{base_url}}"], "path": ["api", "transactions", "{{transaction_id}}"] }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\"message\": \"Transação excluída\"}"
+            }
+          ]
+        },
+        {
+          "name": "Excluir em Lote",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{api_key}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ids\": [1, 2, 3]\n}"
+            },
+            "url": { "raw": "{{base_url}}/api/transactions/bulk_delete", "host": ["{{base_url}}"], "path": ["api", "transactions", "bulk_delete"] }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\"message\": \"3 transação(ões) excluída(s)\", \"deleted\": 3}"
+            }
+          ]
+        },
+        {
+          "name": "Alternar Status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{api_key}}" }],
+            "url": { "raw": "{{base_url}}/api/transactions/{{transaction_id}}/toggle_status", "host": ["{{base_url}}"], "path": ["api", "transactions", "{{transaction_id}}", "toggle_status"] }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"status\": \"Pago\",\n  \"description\": \"Supermercado\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Alternar Parcela",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{api_key}}" },
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": { "mode": "urlencoded", "urlencoded": [
+              { "key": "installment", "value": "1" }
+            ]},
+            "url": { "raw": "{{base_url}}/api/transactions/{{transaction_id}}/toggle_installment", "host": ["{{base_url}}"], "path": ["api", "transactions", "{{transaction_id}}", "toggle_installment"] }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id\": 1,\n  \"paid_installments\": [1],\n  \"installments\": 3\n}"
+            }
+          ]
+        },
+        {
+          "name": "Dashboard Dívidas",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{api_key}}" }],
+            "url": {
+              "raw": "{{base_url}}/api/dashboard",
+              "host": ["{{base_url}}"], "path": ["api", "dashboard"],
+              "query": [
+                { "key": "filter_type", "value": "", "disabled": true },
+                { "key": "filter_desc", "value": "", "disabled": true },
+                { "key": "filter_status", "value": "", "disabled": true },
+                { "key": "filter_vencimento", "value": "", "disabled": true },
+                { "key": "filter_valor", "value": "", "disabled": true },
+                { "key": "filter_vencimento_start", "value": "", "disabled": true },
+                { "key": "page", "value": "1", "disabled": true },
+                { "key": "per_page", "value": "23", "disabled": true }
+              ]
+            }
+          },
+          "response": [
+            {
+              "name": "Sucesso",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"page\": 1,\n  \"per_page\": 23,\n  \"total\": 5,\n  \"total_pages\": 1,\n  \"total_paid\": 500.0,\n  \"total_remaining\": 1200.0,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"description\": \"Financiamento Carro (Parcela 1 de 24)\",\n      \"amount\": 850.0,\n      \"due_date\": \"2026-06-15\",\n      \"is_paid\": false,\n      \"vencimento_status\": \"Em dia\"\n    }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8082", "type": "string" },
+    { "key": "api_key", "value": "cf_admin_2026", "type": "string" },
+    { "key": "email", "value": "pcyasuic@ideiasti.com", "type": "string" },
+    { "key": "password", "value": "admin123", "type": "string" },
+    { "key": "verification_code", "value": "", "type": "string" },
+    { "key": "session_valid", "value": "false", "type": "string" },
+    { "key": "new_email", "value": "novo@email.com", "type": "string" },
+    { "key": "username", "value": "Novo Usuário", "type": "string" },
+    { "key": "new_password", "value": "minha_senha", "type": "string" },
+    { "key": "registration_token", "value": "", "type": "string" },
+    { "key": "reset_token", "value": "", "type": "string" },
+    { "key": "transaction_id", "value": "1", "type": "string" },
+    { "key": "transaction_date", "value": "2026-05-28", "type": "string" },
+    { "key": "description", "value": "Nova transação", "type": "string" },
+    { "key": "amount", "value": "100.00", "type": "string" },
+    { "key": "transaction_type", "value": "Gasto", "type": "string" },
+    { "key": "category", "value": "Alimentação", "type": "string" },
+    { "key": "payment_method", "value": "Pix", "type": "string" },
+    { "key": "start_date", "value": "2026-05-01", "type": "string" },
+    { "key": "end_date", "value": "2026-05-31", "type": "string" }
+  ]
+}

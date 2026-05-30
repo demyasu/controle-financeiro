@@ -1,0 +1,15 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/api/transactions/{{transaction_id}}"
+  method: DELETE
+  headers:
+    Authorization: Bearer {{api_key}}
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: '{"message": "Transação excluída"}'
+order: 1000

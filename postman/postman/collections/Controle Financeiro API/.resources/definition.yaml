@@ -1,0 +1,90 @@
+$kind: collection
+description: |-
+  API do sistema Controle Financeiro
+
+  ## Base URL
+  `{{base_url}}` (default: `http://localhost:8082`)
+
+  ## Autenticação
+  - **API Key**: Enviar via header `Authorization: Bearer {{api_key}}` ou query param `?api_key={{api_key}}`
+  - **Session**: Fazer login via `/authenticate` e usar cookie de sessão
+
+  ## Fluxo de uso
+  1. Execute **Login** → recebe código por email
+  2. Execute **Verificar Código 2FA** com o código recebido
+  3. Use qualquer endpoint protegido
+
+  > ✅ Todos os endpoints retornam JSON formatado.
+  > ✅ Endpoints com `Authorization: Bearer {{api_key}}` não precisam de login (exceto criação de transações que precisa do `user_email` da sessão).
+variables:
+  base_url: http://localhost:8082
+  api_key: cf_admin_2026
+  email: pcyasuic@ideiasti.com
+  password: admin123
+  verification_code: ""
+  session_valid: "false"
+  new_email: novo@email.com
+  username: Novo Usuário
+  new_password: minha_senha
+  registration_token: ""
+  reset_token: ""
+  transaction_id: "1"
+  transaction_date: 2026-05-28
+  description: Nova transação
+  amount: "100.00"
+  transaction_type: Gasto
+  category: Alimentação
+  payment_method: Pix
+  start_date: 2026-05-01
+  end_date: 2026-05-31
+scripts:
+  - type: http:beforeRequest
+    code: |-
+      const skipPaths = ['/authenticate','/verify_token','/register','/forgot_password','/reset_password','/logout'];
+      const reqPath = pm.request.url.getPath();
+      const shouldSkip = skipPaths.some(p => reqPath.startsWith(p));
+      if (shouldSkip) return;
+
+      if (reqPath.startsWith('/api/')) {
+        const hasAuth = pm.request.headers.one('Authorization');
+        if (hasAuth && hasAuth.value.includes('Bearer')) return;
+        console.warn('⚠️  Endpoint API sem API Key. Adicione header: Authorization: Bearer {{api_key}}');
+        return;
+      }
+
+      const authed = pm.collectionVariables.get('session_valid') === 'true';
+      if (authed) return;
+      const hasCookie = pm.cookies.has('rack.session');
+      if (hasCookie) { pm.collectionVariables.set('session_valid', 'true'); return; }
+
+      console.warn('⚠️  Sessão não encontrada. Tentando login automático...');
+      const loginUrl = pm.collectionVariables.get('base_url') || pm.variables.get('base_url');
+      pm.sendRequest({
+        url: loginUrl + '/authenticate',
+        method: 'POST',
+        header: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: {
+          mode: 'urlencoded',
+          urlencoded: [
+            { key: 'email', value: pm.collectionVariables.get('email') || '' },
+            { key: 'password', value: pm.collectionVariables.get('password') || '' }
+          ]
+        }
+      }, function (err, res) {
+        if (err) { console.error('❌  Erro no login automático:', err); return; }
+        if (res.code === 200) {
+          console.warn('📧  Login OK! Código 2FA enviado. Execute "Verificar Código 2FA" com o código recebido.');
+        } else {
+          console.error('❌  Login automático falhou. Execute o fluxo manual.');
+        }
+      });
+    language: text/javascript
+  - type: http:afterResponse
+    code: |-
+      if (pm.response.code === 302 && pm.response.headers.get('Location') !== '/login') {
+        pm.collectionVariables.set('session_valid', 'true');
+      }
+      if (pm.response.code === 403) {
+        console.error('❌  Acesso negado. Verifique se a API Key está correta ou se a sessão está ativa.');
+      }
+    language: text/javascript

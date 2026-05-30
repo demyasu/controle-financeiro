@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/register"
+method: POST
+headers:
+  Content-Type: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    email: "{{new_email}}"
+order: 3000

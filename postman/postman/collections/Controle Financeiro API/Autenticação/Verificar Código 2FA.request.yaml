@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{base_url}}/verify_token"
+method: POST
+headers:
+  Content-Type: application/x-www-form-urlencoded
+body:
+  type: urlencoded
+  content:
+    code: "{{verification_code}}"
+scripts:
+  - type: afterResponse
+    code: |-
+      if (pm.response.code === 302) {
+        pm.collectionVariables.set('session_valid', 'true');
+        console.log('✅  Autenticado!');
+      } else {
+        console.error('❌  Código inválido.');
+      }
+    language: text/javascript
+examples: ./.resources/Verificar Código 2FA.resources/examples
+order: 2000

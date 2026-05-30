@@ -1,0 +1,20 @@
+$kind: http-request
+url: "{{base_url}}/api/transactions"
+method: POST
+headers:
+  Authorization: Bearer {{api_key}}
+  Content-Type: application/json
+body:
+  type: text
+  content: |-
+    {
+      "transaction_date": "{{transaction_date}}",
+      "description": "{{description}}",
+      "amount": {{amount}},
+      "transaction_type": "{{transaction_type}}",
+      "category": "{{category}}",
+      "payment_method": "{{payment_method}}",
+      "status": "Pendente"
+    }
+examples: ./.resources/Criar Transação.resources/examples
+order: 3000

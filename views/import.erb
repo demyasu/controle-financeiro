@@ -23,6 +23,15 @@
   <div class="card-body">
     <p>A primeira linha do arquivo deve conter os cabeçalhos abaixo. As colunas podem estar em qualquer ordem.</p>
     <div class="table-responsive">
+      <div class="alert alert-info">
+        <strong> Formatos de Data Aceitos:</strong> A data pode ser informada como:
+        <ul class="mb-0 mt-1">
+          <li><strong>dd/mm/aaaa</strong> (ex: 15/01/2025) - formato brasileiro</li>
+          <li><strong>dd-mm-aaaa</strong> (ex: 15-01-2025)</li>
+          <li><strong>aaaa-mm-dd</strong> (ex: 2025-01-15) - formato ISO</li>
+          <li><strong>Número serial do Excel</strong> (ex: 45658) - quando a célula está formatada como número</li>
+        </ul>
+      </div>
       <table class="table table-bordered table-striped">
         <thead class="table-dark">
           <tr>
@@ -32,7 +41,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr><td>Data</td><td>Data da transação (dd/mm/aaaa)</td><td><span class="badge bg-danger">Sim</span></td></tr>
+          <tr><td>Data</td><td>Data da transação (dd/mm/aaaa, dd-mm-aaaa ou aaaa-mm-dd)</td><td><span class="badge bg-danger">Sim</span></td></tr>
           <tr><td>Descrição</td><td>Descrição do lançamento</td><td><span class="badge bg-danger">Sim</span></td></tr>
           <tr><td>Valor</td><td>Valor numérico (ex: 150.50 ou 150,50)</td><td><span class="badge bg-danger">Sim</span></td></tr>
           <tr><td>Tipo</td><td>Gasto, Salário Mensal, Ganho Extra, Financiamento, Crédito Parcelado, Pix Parcelado</td><td><span class="badge bg-danger">Sim</span></td></tr>
@@ -40,7 +49,7 @@
           <tr><td>Pagamento</td><td>Dinheiro, Débito, Crédito, Vale Alimentação</td><td><span class="badge bg-secondary">Não</span></td></tr>
           <tr><td>TipoFinanciamento</td><td>cartao, financiamento, pix</td><td><span class="badge bg-secondary">Não</span></td></tr>
           <tr><td>Parcelas</td><td>Número de parcelas (ex: 12)</td><td><span class="badge bg-secondary">Não</span></td></tr>
-          <tr><td>Vencimento</td><td>Data de vencimento (dd/mm/aaaa)</td><td><span class="badge bg-secondary">Não</span></td></tr>
+          <tr><td>Vencimento</td><td>Data de vencimento (dd/mm/aaaa, dd-mm-aaaa ou aaaa-mm-dd)</td><td><span class="badge bg-secondary">Não</span></td></tr>
           <tr><td>Banco</td><td>Nome do banco</td><td><span class="badge bg-secondary">Não</span></td></tr>
           <tr><td>Cartão</td><td>Nome do cartão</td><td><span class="badge bg-secondary">Não</span></td></tr>
           <tr><td>Status</td><td>Pendente ou Pago</td><td><span class="badge bg-secondary">Não</span></td></tr>

@@ -1,0 +1,38 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/api/transactions"
+  method: POST
+  headers:
+    Authorization: Bearer {{api_key}}
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "transaction_date": "{{transaction_date}}",
+        "description": "{{description}}",
+        "amount": {{amount}},
+        "transaction_type": "{{transaction_type}}",
+        "category": "{{category}}",
+        "payment_method": "{{payment_method}}",
+        "status": "Pendente"
+      }
+response:
+  statusCode: 201
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "id": 10,
+        "transaction_date": "2026-05-28",
+        "description": "Nova transação",
+        "amount": 100.0,
+        "transaction_type": "Gasto",
+        "category": "Alimentação",
+        "payment_method": "Pix",
+        "status": "Pendente"
+      }
+order: 1000

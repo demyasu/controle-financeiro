@@ -2,13 +2,13 @@
   <div class="col-md-12">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">📅 Filtro de Período</h5>
+        <h5 class="mb-0">&#x1F4C5; Filtro de Per&iacute;odo</h5>
       </div>
       <div class="card-body">
         <form method="get" class="row g-3">
           <% if @all_users %>
           <div class="col-md-2">
-            <label class="form-label fw-bold">👤 Usuário</label>
+            <label class="form-label fw-bold">&#x1F464; Usu&aacute;rio</label>
             <select name="user" class="form-select form-select-lg" onchange="this.form.submit()">
               <option value="">Meus dados</option>
               <% @all_users.each do |u| %>
@@ -26,10 +26,10 @@
             <input type="date" class="form-control form-control-lg" name="end_date" value="<%= @end_date %>">
           </div>
           <div class="col-md-2 align-self-end">
-            <button type="submit" class="btn btn-primary btn-lg w-100">🔍 Filtrar</button>
+            <button type="submit" class="btn btn-primary btn-lg w-100">&#x1F50D; Filtrar</button>
           </div>
           <div class="col-md-2 align-self-end">
-            <a href="/export?start_date=<%= @start_date %>&end_date=<%= @end_date %>" class="btn btn-success btn-lg w-100">📊 Exportar Excel</a>
+            <a href="/export?start_date=<%= @start_date %>&end_date=<%= @end_date %>" class="btn btn-success btn-lg w-100">&#x1F4CA; Exportar Excel</a>
           </div>
         </form>
       </div>
@@ -43,7 +43,7 @@
       <div class="mb-2">
         <i class="bi bi-cash-stack" style="font-size: 2rem; color: #dc3545;"></i>
       </div>
-      <h5 class="text-muted mb-2">💸 Total Gastos</h5>
+      <h5 class="text-muted mb-2">&#x1F4B8; Total Gastos</h5>
       <h3 class="text-danger fw-bold mb-0"><%= format_currency(@total_gastos) %></h3>
     </div>
   </div>
@@ -52,7 +52,7 @@
       <div class="mb-2">
         <i class="bi bi-wallet2" style="font-size: 2rem; color: #198754;"></i>
       </div>
-      <h5 class="text-muted mb-2">💰 Total Créditos</h5>
+      <h5 class="text-muted mb-2">&#x1F4B0; Total Cr&eacute;ditos</h5>
       <h3 class="text-success fw-bold mb-0"><%= format_currency(@total_creditos) %></h3>
     </div>
   </div>
@@ -61,7 +61,7 @@
       <div class="mb-2">
         <i class="bi bi-graph-<%= @balanco >= 0 ? 'up' : 'down' %>" style="font-size: 2rem; color: <%= @balanco >= 0 ? '#198754' : '#dc3545' %>;"></i>
       </div>
-      <h5 class="text-muted mb-2">📈 Balanço</h5>
+      <h5 class="text-muted mb-2">&#x1F4C8; Balan&ccedil;o</h5>
       <h3 class="fw-bold mb-0 <%= @balanco >= 0 ? 'text-success' : 'text-danger' %>">
         <%= format_currency(@balanco) %>
         <small class="d-block mt-1">(<%= @balanco >= 0 ? 'Positivo' : 'Negativo' %>)</small>
@@ -72,39 +72,125 @@
 
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
-      <h5 class="mb-0">📋 Todas as Transações</h5>
+    <h5 class="mb-0">&#x1F4CB; Todas as Transa&ccedil;&otilde;es</h5>
     <div>
-      <a href="/import" class="btn btn-light btn-sm me-2">📥 Importar XLSX</a>
-      <a href="/new" class="btn btn-light btn-sm">➕ Nova Transação</a>
+      <form action="/transactions/bulk_delete" method="post" id="bulkDeleteForm" style="display:inline;">
+        <button type="button" class="btn btn-danger btn-sm me-2" id="deleteSelectedBtn" onclick="confirmBulkDelete()" disabled><i class="bi bi-trash"></i> Excluir Selecionados</button>
+      </form>
+      <a href="/import" class="btn btn-light btn-sm me-2">&#x1F4E5; Importar XLSX</a>
+      <a href="/new" class="btn btn-light btn-sm">&#x2795; Nova Transa&ccedil;&atilde;o</a>
     </div>
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
-      <table class="table table-hover mb-0">
-        <thead>
+      <form method="get" id="filterForm" class="m-0 p-0">
+        <% if params[:user] && !params[:user].empty? %>
+          <input type="hidden" name="user" value="<%= params[:user] %>">
+        <% end %>
+        <% if params[:start_date] && !params[:start_date].empty? %>
+          <input type="hidden" name="start_date" value="<%= params[:start_date] %>">
+        <% end %>
+        <% if params[:end_date] && !params[:end_date].empty? %>
+          <input type="hidden" name="end_date" value="<%= params[:end_date] %>">
+        <% end %>
+        <table class="table table-hover mb-0">
+          <thead>
             <tr style="background-color: #4472C4 !important; color: white !important; font-weight: bold; text-transform: uppercase; font-size: 0.9rem;">
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">📅 Data</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">📝 Descrição</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: right;">💵 Valor (R$)</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">🏷️ Tipo</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">📁 Categoria</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">💳 Pagamento</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">🔢 Parcelas</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">📌 Status</th>
-              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">⚙️ Ações</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; width: 40px; text-align: center;">
+                <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)" style="transform: scale(1.3);">
+              </th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">&#x1F4C5; Data</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">&#x1F4DD; Descri&ccedil;&atilde;o</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: right;">&#x1F4B5; Valor (R$)</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">&#x1F3F7;&#xFE0F; Tipo</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">&#x1F4C1; Categoria</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none;">&#x1F4B3; Pagamento</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">&#x1F522; Parcelas</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">&#x1F4CC; Status</th>
+              <th style="background-color: #4472C4 !important; color: white !important; padding: 15px; border: none; text-align: center;">&#x2699;&#xFE0F; A&ccedil;&otilde;es</th>
             </tr>
-        </thead>
-            <tbody>
-              <% if @transactions.empty? %>
-                <tr>
-                  <td colspan="9" class="text-center text-muted py-5">
-                <i class="bi bi-inbox" style="font-size: 3rem;"></i>
-                <p class="mt-2">Nenhuma transação encontrada no período.</p>
+            <tr class="filter-row" style="background: #f8f9fa;">
+              <td style="padding: 8px; text-align: center;"></td>
+              <td style="padding: 8px;">
+                <input type="date" class="form-control form-control-sm" name="filter_date_start" value="<%= @filter_date_start %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px;" title="Data inicial">
+              </td>
+              <td style="padding: 8px;">
+                <input type="text" class="form-control form-control-sm" name="filter_desc" placeholder="Descri&ccedil;&atilde;o..." value="<%= @filter_desc %>" onchange="this.form.submit()" style="font-size: 0.8rem;">
+              </td>
+              <td style="padding: 8px;">
+                <select class="form-select form-select-sm" name="filter_valor" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                  <option value="">Todos</option>
+                  <% @filter_valores.each do |v| %>
+                    <option value="<%= v %>" <%= 'selected' if @filter_valor == v.to_s %>><%= format('%.2f', v) %></option>
+                  <% end %>
+                </select>
+              </td>
+              <td style="padding: 8px;">
+                <select class="form-select form-select-sm" name="filter_type" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                  <option value="">Todos</option>
+                  <% @filter_types.each do |t| %>
+                    <option value="<%= t %>" <%= 'selected' if @filter_type == t %>><%= t %></option>
+                  <% end %>
+                </select>
+              </td>
+              <td style="padding: 8px;">
+                <select class="form-select form-select-sm" name="filter_category" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                  <option value="">Todas</option>
+                  <% @filter_categories.each do |c| %>
+                    <option value="<%= c %>" <%= 'selected' if @filter_category == c %>><%= c %></option>
+                  <% end %>
+                </select>
+              </td>
+              <td style="padding: 8px;">
+                <select class="form-select form-select-sm" name="filter_payment" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                  <option value="">Todos</option>
+                  <% @filter_payments.each do |p| %>
+                    <option value="<%= p %>" <%= 'selected' if @filter_payment == p %>><%= p %></option>
+                  <% end %>
+                </select>
+              </td>
+              <td style="padding: 8px;">
+                <select class="form-select form-select-sm" name="filter_installments" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                  <option value="">Todas</option>
+                  <option value="1" <%= 'selected' if @filter_installments == '1' %>>&Aacute; vista</option>
+                  <option value="2" <%= 'selected' if @filter_installments == '2' %>>2x</option>
+                  <option value="3" <%= 'selected' if @filter_installments == '3' %>>3x</option>
+                  <option value="4" <%= 'selected' if @filter_installments == '4' %>>4x</option>
+                  <option value="5" <%= 'selected' if @filter_installments == '5' %>>5x</option>
+                  <option value="6" <%= 'selected' if @filter_installments == '6' %>>6x</option>
+                  <option value="7" <%= 'selected' if @filter_installments == '7' %>>7x</option>
+                  <option value="8" <%= 'selected' if @filter_installments == '8' %>>8x</option>
+                  <option value="9" <%= 'selected' if @filter_installments == '9' %>>9x</option>
+                  <option value="10" <%= 'selected' if @filter_installments == '10' %>>10x</option>
+                  <option value="12" <%= 'selected' if @filter_installments == '12' %>>12x</option>
+                </select>
+              </td>
+              <td style="padding: 8px;">
+                <select class="form-select form-select-sm" name="filter_status" onchange="this.form.submit()" style="font-size: 0.8rem;">
+                  <option value="">Todos</option>
+                  <option value="Pendente" <%= 'selected' if @filter_status == 'Pendente' %>>Pendente</option>
+                  <option value="Pago" <%= 'selected' if @filter_status == 'Pago' %>>Pago</option>
+                </select>
+              </td>
+              <td style="padding: 8px; text-align: center;">
+                <button type="submit" class="btn btn-sm btn-outline-secondary" style="font-size: 0.75rem; padding: 2px 8px;">Filtrar</button>
               </td>
             </tr>
-          <% else %>
-              <% @transactions.each do |t| %>
+          </thead>
+          <tbody>
+            <% if @transactions_page.empty? %>
+              <tr>
+                <td colspan="10" class="text-center text-muted py-5">
+                  <i class="bi bi-inbox" style="font-size: 3rem;"></i>
+                  <p class="mt-2">Nenhuma transa&ccedil;&atilde;o encontrada.</p>
+                </td>
+              </tr>
+            <% else %>
+              <% @transactions_page.each do |t| %>
                 <tr>
+                  <td class="py-3 px-4 text-center" style="width: 40px;">
+                    <input type="checkbox" class="transaction-checkbox" value="<%= t[:id] %>" form="bulkDeleteForm" name="ids[]" style="transform: scale(1.3);">
+                  </td>
                   <td class="py-3 px-4"><%= t[:transaction_date] ? t[:transaction_date].strftime('%d/%m/%Y') : '-' %></td>
                   <td class="py-3 px-4"><%= t[:description] %></td>
                   <td class="py-3 px-4 text-end fw-bold"><%= format_currency(t[:amount]) %></td>
@@ -119,9 +205,9 @@
                   <td class="py-3 px-4"><%= t[:payment_method] || '-' %></td>
                   <td class="py-3 px-4 text-center">
                     <% if t[:installments] && t[:installments] > 1 %>
-                      <span class="badge bg-info">1 de <%= t[:installments] %></span>
+                      <span class="badge bg-info"><%= t[:installments] %>x</span>
                     <% elsif t[:installments] == 1 %>
-                      <span class="badge bg-info">1 de 1</span>
+                      <span class="badge bg-info">&Aacute; vista</span>
                     <% else %>
                       -
                     <% end %>
@@ -133,18 +219,84 @@
                       <span class="badge bg-warning">Pendente</span>
                     <% end %>
                   </td>
-                  <td class="py-3 px-4 text-center">
-                    <a href="/transactions/<%= t[:id] %>/edit" class="btn btn-warning btn-sm me-1">✏️</a>
-                    <form action="/transactions/<%= t[:id] %>" method="post" style="display:inline;">
+                  <td class="py-3 px-4 text-center" style="white-space: nowrap;">
+                    <a href="/transactions/<%= t[:id] %>/edit" class="btn btn-warning btn-sm me-1" title="Editar"><i class="bi bi-pencil"></i></a>
+                    <form action="/transactions/<%= t[:id] %>" method="post" style="display:inline;" onsubmit="return confirm('Excluir esta transa&ccedil;&atilde;o?')">
                       <input type="hidden" name="_method" value="delete">
-                      <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Confirma exclusão?')">🗑️</button>
+                      <button type="submit" class="btn btn-danger btn-sm" title="Excluir"><i class="bi bi-trash"></i></button>
                     </form>
                   </td>
                 </tr>
               <% end %>
-          <% end %>
-        </tbody>
-      </table>
+            <% end %>
+          </tbody>
+        </table>
+      </form>
     </div>
   </div>
 </div>
+
+<% if @total_pages > 1 %>
+<div class="d-flex justify-content-between align-items-center mt-3 mb-4">
+  <div class="text-muted">
+    Mostrando p&aacute;gina <%= @page %> de <%= @total_pages %> (<%= @total_items %> registros)
+  </div>
+  <nav>
+    <ul class="pagination pagination-lg mb-0">
+      <li class="page-item <%= 'disabled' if @page <= 1 %>">
+        <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('page' => 1)) %>">&laquo;</a>
+      </li>
+      <li class="page-item <%= 'disabled' if @page <= 1 %>">
+        <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('page' => @page - 1)) %>">&lsaquo;</a>
+      </li>
+      <% start_pg = [@page - 2, 1].max %>
+      <% end_pg = [start_pg + 4, @total_pages].min %>
+      <% start_pg = [end_pg - 4, 1].max %>
+      <% (start_pg..end_pg).each do |p| %>
+        <li class="page-item <%= 'active' if p == @page %>">
+          <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('page' => p)) %>"><%= p %></a>
+        </li>
+      <% end %>
+      <li class="page-item <%= 'disabled' if @page >= @total_pages %>">
+        <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('page' => @page + 1)) %>">&rsaquo;</a>
+      </li>
+      <li class="page-item <%= 'disabled' if @page >= @total_pages %>">
+        <a class="page-link" href="?<%= Rack::Utils.build_query(params.merge('page' => @total_pages)) %>">&raquo;</a>
+      </li>
+    </ul>
+  </nav>
+</div>
+<% end %>
+
+<script>
+function toggleSelectAll(source) {
+  document.querySelectorAll('.transaction-checkbox').forEach(function(cb) {
+    cb.checked = source.checked;
+  });
+  updateDeleteButton();
+}
+
+document.querySelectorAll('.transaction-checkbox').forEach(function(cb) {
+  cb.addEventListener('change', updateDeleteButton);
+});
+
+function updateDeleteButton() {
+  var checked = document.querySelectorAll('.transaction-checkbox:checked').length;
+  var btn = document.getElementById('deleteSelectedBtn');
+  btn.disabled = checked === 0;
+  if (checked > 0) {
+    btn.innerHTML = '<i class="bi bi-trash"></i> Excluir (' + checked + ')';
+  } else {
+    btn.innerHTML = '<i class="bi bi-trash"></i> Excluir Selecionados';
+  }
+}
+
+function confirmBulkDelete() {
+  var checked = document.querySelectorAll('.transaction-checkbox:checked').length;
+  if (checked === 0) return;
+  if (confirm('Confirma exclusão de ' + checked + ' transação(ões)?')) {
+    document.getElementById('bulkDeleteForm').submit();
+  }
+}
+</script>
+

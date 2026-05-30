@@ -1,0 +1,10 @@
+$kind: http-request
+url: "{{base_url}}/logout"
+method: GET
+scripts:
+  - type: afterResponse
+    code: |-
+      pm.collectionVariables.set('session_valid', 'false');
+      console.log('🔓  Sessão encerrada.');
+    language: text/javascript
+order: 9000

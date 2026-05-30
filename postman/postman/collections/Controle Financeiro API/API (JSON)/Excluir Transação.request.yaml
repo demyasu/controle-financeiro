@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/api/transactions/{{transaction_id}}"
+method: DELETE
+headers:
+  Authorization: Bearer {{api_key}}
+examples: ./.resources/Excluir Transação.resources/examples
+order: 5000

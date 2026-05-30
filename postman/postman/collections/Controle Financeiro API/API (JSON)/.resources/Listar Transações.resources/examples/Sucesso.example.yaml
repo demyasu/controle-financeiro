@@ -1,0 +1,59 @@
+$kind: http-example
+request:
+  url: "{{base_url}}/api/transactions?start_date={{start_date}}&end_date={{end_date}}"
+  method: GET
+  headers:
+    Authorization: Bearer {{api_key}}
+  queryParams:
+    - key: start_date
+      value: "{{start_date}}"
+    - key: end_date
+      value: "{{end_date}}"
+    - key: filter_type
+      value: ""
+      disabled: true
+    - key: filter_category
+      value: ""
+      disabled: true
+    - key: filter_desc
+      value: ""
+      disabled: true
+    - key: page
+      value: "1"
+      disabled: true
+    - key: per_page
+      value: "23"
+      disabled: true
+    - key: user
+      value: ""
+      disabled: true
+response:
+  statusCode: 200
+  statusText: OK
+  headers:
+    Content-Type: application/json
+  body:
+    type: text
+    content: |-
+      {
+        "page": 1,
+        "per_page": 23,
+        "total": 42,
+        "total_pages": 2,
+        "data": [
+          {
+            "id": 1,
+            "transaction_date": "2026-05-28",
+            "description": "Supermercado",
+            "amount": 150.50,
+            "transaction_type": "Gasto",
+            "category": "Alimentação",
+            "payment_method": "Pix",
+            "status": "Pendente",
+            "installments": null,
+            "due_date": null,
+            "user_email": "user@email.com"
+          }
+        ]
+      }
+order: 1000

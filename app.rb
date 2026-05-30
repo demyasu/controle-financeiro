@@ -183,6 +183,8 @@ def admin?
   user && user[:admin]
 end
 
+
+
 def get_user_transactions(user_email = nil)
   ds = Transaction.order(Sequel.desc(:transaction_date))
   user_email ? ds.where(user_email: user_email).all : ds.all
@@ -281,6 +283,7 @@ end
 
 before do
   pass if ['/login', '/register', '/verify', '/authenticate', '/verify_token', '/logout', '/forgot_password'].include?(request.path)
+  pass if request.path =~ %r{^/api/}
   pass if request.path =~ %r{^/register/[^/]+$}
   pass if request.path =~ %r{^/reset_password/}
   pass if session[:user_email]
@@ -488,33 +491,73 @@ get '/' do
             when 'created' then 'Transação criada com sucesso!'
             when 'updated' then 'Transação atualizada com sucesso!'
             when 'deleted' then 'Transação excluída com sucesso!'
+            when 'bulk_deleted' then 'Transações excluídas com sucesso!'
             end
-  @transactions = if admin? && params[:user] && !params[:user].empty?
+
+  base_transactions = if admin? && params[:user] && !params[:user].empty?
     get_user_transactions(params[:user])
   else
     get_my_transactions
   end
 
-  @start_date = if params[:start_date] && !params[:start_date].empty?
-    Date.parse(params[:start_date])
-  else
-    Date.new(Date.today.year, Date.today.month, 1)
-  end
+  has_date_range = params[:start_date] && !params[:start_date].empty? || params[:end_date] && !params[:end_date].empty?
 
-  @end_date = if params[:end_date] && !params[:end_date].empty?
-    Date.parse(params[:end_date])
-  else
-    Date.new(Date.today.year, Date.today.month, -1)
-  end
-
-  if params[:start_date] && params[:end_date]
+  if has_date_range
+    @start_date = params[:start_date] && !params[:start_date].empty? ? Date.parse(params[:start_date]) : Date.new(2000, 1, 1)
+    @end_date = params[:end_date] && !params[:end_date].empty? ? Date.parse(params[:end_date]) : Date.new(2100, 12, 31)
     date_range = (@start_date..@end_date)
-    @transactions = @transactions.select { |t| t[:transaction_date] && date_range.include?(t[:transaction_date]) }
+    @transactions = base_transactions.select { |t| t[:transaction_date] && date_range.include?(t[:transaction_date]) }
+  else
+    @start_date = Date.new(Date.today.year, Date.today.month, 1)
+    @end_date = Date.new(Date.today.year, Date.today.month, -1)
+    @transactions = base_transactions.dup
+  end
+
+  @filter_types = base_transactions.map { |t| t[:transaction_type] }.compact.uniq.sort
+  @filter_categories = base_transactions.map { |t| t[:category] }.compact.uniq.sort
+  @filter_payments = base_transactions.map { |t| t[:payment_method] }.compact.uniq.sort
+  @filter_valores = base_transactions.map { |t| t[:amount] }.compact.uniq.sort
+
+  @filter_desc = params[:filter_desc]
+  @filter_type = params[:filter_type]
+  @filter_category = params[:filter_category]
+  @filter_payment = params[:filter_payment]
+  @filter_status = params[:filter_status]
+  @filter_date_start = params[:filter_date_start]
+  @filter_valor = params[:filter_valor]
+  @filter_installments = params[:filter_installments]
+
+  if @filter_date_start && !@filter_date_start.empty?
+    fs = Date.parse(@filter_date_start) rescue nil
+    @transactions = @transactions.select { |t| t[:transaction_date] && t[:transaction_date] >= fs } if fs
+  end
+  @transactions = @transactions.select { |t| t[:description].to_s.downcase.include?(@filter_desc.downcase) } if @filter_desc && !@filter_desc.empty?
+  @transactions = @transactions.select { |t| t[:transaction_type] == @filter_type } if @filter_type && !@filter_type.empty?
+  @transactions = @transactions.select { |t| t[:category] == @filter_category } if @filter_category && !@filter_category.empty?
+  @transactions = @transactions.select { |t| t[:payment_method] == @filter_payment } if @filter_payment && !@filter_payment.empty?
+  @transactions = @transactions.select { |t| t[:status] == @filter_status } if @filter_status && !@filter_status.empty?
+  if @filter_valor && !@filter_valor.empty?
+    v = @filter_valor.to_f
+    @transactions = @transactions.select { |t| t[:amount].to_f == v }
+  end
+  if @filter_installments && !@filter_installments.empty?
+    fi = @filter_installments.to_i
+    @transactions = @transactions.select { |t| (t[:installments] || 1) == fi }
   end
 
   @total_gastos = @transactions.select { |t| ['Gasto', 'Financiamento', 'Crédito Parcelado', 'Pix Parcelado'].include?(t[:transaction_type]) }.sum { |t| t[:amount] }
   @total_creditos = @transactions.select { |t| ['Salário Mensal', 'Ganho Extra'].include?(t[:transaction_type]) }.sum { |t| t[:amount] }
   @balanco = @total_creditos - @total_gastos
+
+  @page = (params[:page] || 1).to_i
+  @per_page = 23
+  @total_items = @transactions.size
+  @total_pages = (@total_items.to_f / @per_page).ceil
+  @total_pages = 1 if @total_pages < 1
+  @page = @total_pages if @page > @total_pages
+  @page = 1 if @page < 1
+  offset = (@page - 1) * @per_page
+  @transactions_page = @transactions[offset, @per_page] || []
 
   @all_users = get_all_users if admin?
   @selected_user = params[:user]
@@ -556,10 +599,19 @@ def parse_xlsx_date(value)
   elsif value.is_a?(Float) || value.is_a?(Integer)
     Date.new(1899, 12, 30) + value.to_i
   else
-    begin
-      Date.parse(value.to_s)
-    rescue
-      nil
+    str = value.to_s.strip
+    if str =~ /\A(\d{2})\/(\d{2})\/(\d{4})\z/
+      Date.new($3.to_i, $2.to_i, $1.to_i)
+    elsif str =~ /\A(\d{2})-(\d{2})-(\d{4})\z/
+      Date.new($3.to_i, $2.to_i, $1.to_i)
+    elsif str =~ /\A(\d{4})-(\d{2})-(\d{2})\z/
+      Date.new($1.to_i, $2.to_i, $3.to_i)
+    else
+      begin
+        Date.parse(str)
+      rescue
+        nil
+      end
     end
   end
 end
@@ -731,6 +783,17 @@ delete '/transactions/:id' do
   redirect '/?notice=deleted'
 end
 
+post '/transactions/bulk_delete' do
+  ids = params[:ids]
+  if ids && ids.is_a?(Array)
+    ids.each do |id|
+      t = Transaction[id.to_i]
+      delete_transaction(id.to_i) if can_modify?(t)
+    end
+  end
+  redirect '/?notice=bulk_deleted'
+end
+
 get '/dashboard' do
   @transactions = if admin? && params[:user] && !params[:user].empty?
     get_user_transactions(params[:user])
@@ -806,7 +869,396 @@ get '/dashboard' do
   @upcoming.sort_by! do |d|
     normalize_date(d[:due_date])
   end
+
+  @dashboard_types = @upcoming.map do |d|
+    if d[:financing_type] == 'cartao' || d[:transaction_type] == 'Crédito Parcelado'
+      'cartao'
+    elsif d[:financing_type] == 'financiamento' || d[:transaction_type] == 'Financiamento'
+      'financiamento'
+    elsif d[:financing_type] == 'pix' || d[:transaction_type] == 'Pix Parcelado'
+      'pix'
+    elsif d[:category] == 'Financiamento'
+      'financiamento'
+    else
+      'outros'
+    end
+  end.uniq.sort
+
+  @filter_valores = @upcoming.map { |d| d[:amount] }.compact.uniq.sort
+
+  filter_type = params[:filter_type]
+  filter_desc = params[:filter_desc]
+  filter_bank = params[:filter_bank]
+  filter_status = params[:filter_status]
+  filter_vencimento = params[:filter_vencimento]
+  filter_valor = params[:filter_valor]
+  filter_vencimento_start = params[:filter_vencimento_start]
+  filter_installments = params[:filter_installments]
+
+  if filter_type && !filter_type.empty?
+    case filter_type
+    when 'cartao'
+      @upcoming = @upcoming.select { |d| d[:financing_type] == 'cartao' || d[:transaction_type] == 'Crédito Parcelado' }
+    when 'financiamento'
+      @upcoming = @upcoming.select { |d| d[:financing_type] == 'financiamento' || d[:transaction_type] == 'Financiamento' || d[:category] == 'Financiamento' }
+    when 'pix'
+      @upcoming = @upcoming.select { |d| d[:financing_type] == 'pix' || d[:transaction_type] == 'Pix Parcelado' }
+    when 'credito_parcelado'
+      @upcoming = @upcoming.select { |d| d[:transaction_type] == 'Crédito Parcelado' }
+    when 'outros'
+      @upcoming = @upcoming.select { |d| !['cartao', 'financiamento', 'pix'].include?(d[:financing_type]) && !['Crédito Parcelado', 'Financiamento', 'Pix Parcelado'].include?(d[:transaction_type]) }
+    end
+  end
+  @upcoming = @upcoming.select { |d| d[:description].to_s.downcase.include?(filter_desc.downcase) } if filter_desc && !filter_desc.empty?
+  @upcoming = @upcoming.select { |d| (d[:bank].to_s + d[:card_name].to_s).downcase.include?(filter_bank.downcase) } if filter_bank && !filter_bank.empty?
+  if filter_status && !filter_status.empty?
+    is_paid_filter = filter_status == 'Pago'
+    @upcoming = @upcoming.select { |d| d[:is_paid] == is_paid_filter }
+  end
+  @upcoming = @upcoming.select { |d| d[:vencimento_status] == filter_vencimento } if filter_vencimento && !filter_vencimento.empty?
+  if filter_valor && !filter_valor.empty?
+    v = filter_valor.to_f
+    @upcoming = @upcoming.select { |d| d[:amount].to_f == v }
+  end
+  if filter_vencimento_start && !filter_vencimento_start.empty?
+    vs = Date.parse(filter_vencimento_start) rescue nil
+    @upcoming = @upcoming.select { |d| d[:due_date] && d[:due_date] >= vs } if vs
+  end
+  if filter_installments && !filter_installments.empty?
+    fi = filter_installments.to_i
+    @upcoming = @upcoming.select { |d| (d[:installments] || 1) == fi }
+  end
+
+  @total_paid = @upcoming.select { |d| d[:is_paid] }.sum { |d| d[:amount] }
+  @total_remaining = @upcoming.reject { |d| d[:is_paid] }.sum { |d| d[:amount] }
+
+  @dash_page = (params[:dash_page] || 1).to_i
+  @dash_per_page = 23
+  @dash_total_items = @upcoming.size
+  @dash_total_pages = (@dash_total_items.to_f / @dash_per_page).ceil
+  @dash_total_pages = 1 if @dash_total_pages < 1
+  @dash_page = @dash_total_pages if @dash_page > @dash_total_pages
+  @dash_page = 1 if @dash_page < 1
+  dash_offset = (@dash_page - 1) * @dash_per_page
+  @upcoming = @upcoming[dash_offset, @dash_per_page] || []
+
   erb :dashboard
+end
+
+def api_authenticate!
+  @api_key_used = false
+  api_key = env['HTTP_AUTHORIZATION']&.sub(/\ABearer\s+/, '') || params[:api_key]
+  if api_key && !api_key.empty? && api_key == ENV['API_KEY']
+    @api_key_used = true
+  elsif !admin?
+    halt 403, JSON.generate(error: 'Acesso negado')
+  end
+end
+
+def api_can_modify?(t)
+  t && (@api_key_used || t[:user_email] == current_user_email || admin?)
+end
+
+def transaction_to_json(t)
+  paid = t.paid_installments || []
+  {
+    id: t[:id],
+    transaction_date: t[:transaction_date]&.iso8601,
+    description: t[:description],
+    amount: t[:amount],
+    transaction_type: t[:transaction_type],
+    category: t[:category],
+    payment_method: t[:payment_method],
+    financing_type: t[:financing_type],
+    installments: t[:installments],
+    due_date: t[:due_date]&.iso8601,
+    bank: t[:bank],
+    card_name: t[:card_name],
+    status: t[:status],
+    paid_installments: paid,
+    user_email: t[:user_email],
+    created_at: t[:created_at]&.iso8601,
+    updated_at: t[:updated_at]&.iso8601
+  }
+end
+
+get '/api/users' do
+  content_type :json
+  api_authenticate!
+  users = get_all_users.map do |u|
+    {
+      email: u[:email],
+      username: u[:username],
+      admin: u[:admin],
+      created_at: u[:created_at]&.iso8601
+    }
+  end
+  JSON.generate(users)
+end
+
+get '/api/transactions' do
+  content_type :json
+  api_authenticate!
+  base = (@api_key_used || admin?) && params[:user] && !params[:user].empty? ? get_user_transactions(params[:user]) : get_my_transactions
+  transactions = base
+  if params[:start_date] && !params[:start_date].empty?
+    sd = Date.parse(params[:start_date]) rescue nil
+    transactions = transactions.select { |t| t[:transaction_date] && sd && t[:transaction_date] >= sd } if sd
+  end
+  if params[:end_date] && !params[:end_date].empty?
+    ed = Date.parse(params[:end_date]) rescue nil
+    transactions = transactions.select { |t| t[:transaction_date] && ed && t[:transaction_date] <= ed } if ed
+  end
+  if params[:filter_type] && !params[:filter_type].empty?
+    transactions = transactions.select { |t| t[:transaction_type] == params[:filter_type] }
+  end
+  if params[:filter_category] && !params[:filter_category].empty?
+    transactions = transactions.select { |t| t[:category] == params[:filter_category] }
+  end
+  if params[:filter_desc] && !params[:filter_desc].empty?
+    transactions = transactions.select { |t| t[:description].to_s.downcase.include?(params[:filter_desc].downcase) }
+  end
+  per_page = (params[:per_page] || 23).to_i
+  per_page = 100 if per_page > 100
+  page = (params[:page] || 1).to_i
+  total = transactions.size
+  total_pages = (total.to_f / per_page).ceil
+  total_pages = 1 if total_pages < 1
+  page = total_pages if page > total_pages
+  page = 1 if page < 1
+  offset = (page - 1) * per_page
+  items = transactions[offset, per_page] || []
+  JSON.generate({
+    page: page,
+    per_page: per_page,
+    total: total,
+    total_pages: total_pages,
+    data: items.map { |t| transaction_to_json(t) }
+  })
+end
+
+post '/api/transactions' do
+  content_type :json
+  api_authenticate!
+  begin
+    body = JSON.parse(request.body.read)
+  rescue
+    body = params
+  end
+  sym = {}
+  body.each { |k, v| sym[k.to_sym] = v }
+  user_email = sym[:user_email] || current_user_email
+  t = save_transaction(
+    transaction_date: sym[:transaction_date] ? Date.parse(sym[:transaction_date].to_s) : Date.today,
+    description: sym[:description],
+    amount: sym[:amount].to_f,
+    transaction_type: sym[:transaction_type],
+    category: sym[:category],
+    payment_method: sym[:payment_method],
+    financing_type: sym[:financing_type],
+    installments: sym.key?(:installments) ? sym[:installments].to_i : nil,
+    due_date: sym.key?(:due_date) && sym[:due_date] && !sym[:due_date].to_s.empty? ? (Date.parse(sym[:due_date].to_s) rescue nil) : nil,
+    bank: sym[:bank],
+    card_name: sym[:card_name],
+    status: sym[:status] || 'Pendente',
+    user_email: user_email
+  )
+  status 201
+  JSON.generate(transaction_to_json(t))
+end
+
+patch '/api/transactions/:id' do
+  content_type :json
+  api_authenticate!
+  t = get_transaction(params[:id].to_i)
+  halt 404, JSON.generate(error: 'Transação não encontrada') unless api_can_modify?(t)
+  begin
+    data = JSON.parse(request.body.read)
+  rescue
+    data = params
+  end
+  sym_data = {}
+  data.each { |k, v| sym_data[k.to_sym] = v }
+  update_transaction(params[:id].to_i, sym_data)
+  JSON.generate(transaction_to_json(Transaction[params[:id].to_i]))
+end
+
+delete '/api/transactions/:id' do
+  content_type :json
+  api_authenticate!
+  t = get_transaction(params[:id].to_i)
+  halt 404, JSON.generate(error: 'Transação não encontrada') unless api_can_modify?(t)
+  delete_transaction(params[:id].to_i)
+  JSON.generate(message: 'Transação excluída')
+end
+
+post '/api/transactions/bulk_delete' do
+  content_type :json
+  api_authenticate!
+  begin
+    data = JSON.parse(request.body.read)
+  rescue
+    data = params
+  end
+  ids = data[:ids] || data['ids'] || params[:ids]
+  deleted = 0
+  if ids && ids.is_a?(Array)
+    ids.each do |id|
+      t = Transaction[id.to_i]
+      if t && api_can_modify?(t)
+        delete_transaction(id.to_i)
+        deleted += 1
+      end
+    end
+  end
+  JSON.generate(message: "#{deleted} transação(ões) excluída(s)", deleted: deleted)
+end
+
+post '/api/transactions/:id/toggle_status' do
+  content_type :json
+  api_authenticate!
+  t = Transaction[params[:id].to_i]
+  halt 404, JSON.generate(error: 'Transação não encontrada') unless t && api_can_modify?(t)
+  new_status = t[:status] == 'Pago' ? 'Pendente' : 'Pago'
+  t.update(status: new_status, updated_at: Time.now)
+  JSON.generate(transaction_to_json(t))
+end
+
+post '/api/transactions/:id/toggle_installment' do
+  content_type :json
+  api_authenticate!
+  t = Transaction[params[:id].to_i]
+  halt 404, JSON.generate(error: 'Transação não encontrada') unless t && api_can_modify?(t)
+  paid = t.paid_installments || []
+  installment = (params[:installment] || 1).to_i
+  if paid.include?(installment)
+    paid.delete(installment)
+  else
+    paid << installment
+  end
+  t.update(paid_installments: paid, updated_at: Time.now)
+  JSON.generate(transaction_to_json(t))
+end
+
+get '/api/dashboard' do
+  content_type :json
+  api_authenticate!
+  transactions = (@api_key_used || admin?) && params[:user] && !params[:user].empty? ? get_user_transactions(params[:user]) : get_my_transactions
+  debts = transactions.select do |t|
+    (t[:transaction_type] == 'Gasto' && t[:category] == 'Financiamento') ||
+    ['Financiamento', 'Crédito Parcelado', 'Pix Parcelado', 'Crédito à Vista'].include?(t[:transaction_type])
+  end
+  upcoming = []
+  today = Date.today
+  debts.each do |debt|
+    amount = debt[:amount].to_f
+    paid_installments = debt.paid_installments || []
+    if debt[:installments] && debt[:installments] > 1 && debt[:due_date]
+      parcel_value = amount / debt[:installments].to_f
+      (1..debt[:installments]).each do |i|
+        due = debt[:due_date] + (i - 1) * 30
+        is_paid = paid_installments.include?(i)
+        upcoming << {
+          id: debt[:id],
+          description: "#{debt[:description]} (Parcela #{i} de #{debt[:installments]})",
+          amount: parcel_value,
+          due_date: due&.iso8601,
+          bank: debt[:bank],
+          card_name: debt[:card_name],
+          financing_type: debt[:financing_type],
+          category: debt[:category],
+          installments: debt[:installments],
+          current_installment: i,
+          is_paid: is_paid,
+          vencimento_status: due < today ? 'Vencida' : (due == today ? 'Vence hoje' : 'Em dia'),
+          transaction_type: debt[:transaction_type]
+        }
+      end
+    elsif debt[:due_date]
+      is_paid = paid_installments.include?(1)
+      upcoming << {
+        id: debt[:id],
+        description: debt[:description],
+        amount: amount,
+        due_date: debt[:due_date]&.iso8601,
+        bank: debt[:bank],
+        card_name: debt[:card_name],
+        financing_type: debt[:financing_type],
+        category: debt[:category],
+        installments: 1,
+        current_installment: 1,
+        is_paid: is_paid,
+        vencimento_status: (debt[:due_date] < today ? 'Vencida' : (debt[:due_date] == today ? 'Vence hoje' : 'Em dia')),
+        transaction_type: debt[:transaction_type]
+      }
+    else
+      is_paid = paid_installments.include?(1)
+      upcoming << {
+        id: debt[:id],
+        description: debt[:description],
+        amount: amount,
+        due_date: nil,
+        bank: debt[:bank],
+        card_name: debt[:card_name],
+        financing_type: debt[:financing_type],
+        category: debt[:category],
+        installments: 1,
+        current_installment: 1,
+        is_paid: is_paid,
+        vencimento_status: 'Sem vencimento',
+        transaction_type: debt[:transaction_type]
+      }
+    end
+  end
+  upcoming.sort_by! { |d| d[:due_date] || '9999-12-31' }
+  if params[:filter_type] && !params[:filter_type].empty?
+    ft = params[:filter_type]
+    upcoming = upcoming.select do |d|
+      case ft
+      when 'cartao' then d[:financing_type] == 'cartao' || d[:transaction_type] == 'Crédito Parcelado'
+      when 'financiamento' then d[:financing_type] == 'financiamento' || d[:transaction_type] == 'Financiamento' || d[:category] == 'Financiamento'
+      when 'pix' then d[:financing_type] == 'pix' || d[:transaction_type] == 'Pix Parcelado'
+      when 'credito_parcelado' then d[:transaction_type] == 'Crédito Parcelado'
+      when 'outros' then !['cartao', 'financiamento', 'pix'].include?(d[:financing_type]) && !['Crédito Parcelado', 'Financiamento', 'Pix Parcelado'].include?(d[:transaction_type])
+      else true
+      end
+    end
+  end
+  upcoming = upcoming.select { |d| d[:description].to_s.downcase.include?(params[:filter_desc].downcase) } if params[:filter_desc] && !params[:filter_desc].empty?
+  if params[:filter_status] && !params[:filter_status].empty?
+    is_paid_filter = params[:filter_status] == 'Pago'
+    upcoming = upcoming.select { |d| d[:is_paid] == is_paid_filter }
+  end
+  upcoming = upcoming.select { |d| d[:vencimento_status] == params[:filter_vencimento] } if params[:filter_vencimento] && !params[:filter_vencimento].empty?
+  if params[:filter_valor] && !params[:filter_valor].empty?
+    v = params[:filter_valor].to_f
+    upcoming = upcoming.select { |d| d[:amount].to_f == v }
+  end
+  if params[:filter_vencimento_start] && !params[:filter_vencimento_start].empty?
+    vs = Date.parse(params[:filter_vencimento_start]) rescue nil
+    upcoming = upcoming.select { |d| d[:due_date] && Date.parse(d[:due_date]) >= vs } if vs
+  end
+  total_paid = upcoming.select { |d| d[:is_paid] }.sum { |d| d[:amount] }
+  total_remaining = upcoming.reject { |d| d[:is_paid] }.sum { |d| d[:amount] }
+  per_page = (params[:per_page] || 23).to_i
+  per_page = 100 if per_page > 100
+  page = (params[:page] || 1).to_i
+  total = upcoming.size
+  total_pages = (total.to_f / per_page).ceil
+  total_pages = 1 if total_pages < 1
+  page = total_pages if page > total_pages
+  page = 1 if page < 1
+  offset = (page - 1) * per_page
+  items = upcoming[offset, per_page] || []
+  JSON.generate({
+    page: page,
+    per_page: per_page,
+    total: total,
+    total_pages: total_pages,
+    total_paid: total_paid,
+    total_remaining: total_remaining,
+    data: items
+  })
 end
 
 get '/export' do

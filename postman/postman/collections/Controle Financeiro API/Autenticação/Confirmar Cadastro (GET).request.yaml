@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{base_url}}/register/{{registration_token}}"
+method: GET
+order: 4000

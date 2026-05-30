@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{base_url}}/api/transactions/{{transaction_id}}/toggle_status"
+method: POST
+headers:
+  Authorization: Bearer {{api_key}}
+examples: ./.resources/Alternar Status.resources/examples
+order: 7000
