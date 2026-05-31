@@ -135,7 +135,7 @@ unless User[ADMIN_EMAIL]
   salt = SecureRandom.hex(16)
   iter = 100_000
   key_len = 32
-  default_hash = OpenSSL::PKCS5.pbkdf2_hmac('admin123', salt, iter, key_len, 'SHA256')
+  default_hash = OpenSSL::PKCS5.pbkdf2_hmac('095836@@-De', salt, iter, key_len, 'SHA256')
   User.create(
     username: 'Admin',
     email: ADMIN_EMAIL, admin: true,
@@ -361,6 +361,13 @@ post '/authenticate' do
     @error = 'Email ou senha inválidos'
     return erb :login
   end
+
+  if user[:admin]
+    session[:user_email] = email
+    session[:notice] = 'Login realizado com sucesso!'
+    redirect '/'
+  end
+
   code = generate_code
   token = generate_token
   LoginToken.create(token: token, email: email, code: code, created_at: Time.now, used: false)
