@@ -137,8 +137,10 @@
                   <th style="padding: 6px;">
                     <input type="text" class="form-control form-control-sm" name="filter_bank" placeholder="Banco..." value="<%= params[:filter_bank] %>" onchange="this.form.submit()" style="font-size: 0.75rem;">
                   </th>
-                  <th class="text-center" style="padding: 6px;">
-                    <input type="date" class="form-control form-control-sm" name="filter_vencimento_start" value="<%= params[:filter_vencimento_start] %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px;">
+                  <th class="text-center" style="padding: 6px; white-space: nowrap;">
+                    <input type="date" class="form-control form-control-sm d-inline-block" name="filter_vencimento_start" value="<%= params[:filter_vencimento_start] %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px; width: auto;">
+                    <span class="mx-1">~</span>
+                    <input type="date" class="form-control form-control-sm d-inline-block" name="filter_vencimento_end" value="<%= params[:filter_vencimento_end] %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px; width: auto;">
                   </th>
                   <th class="text-center" style="padding: 6px;">
                     <select class="form-select form-select-sm" name="filter_installments" onchange="this.form.submit()" style="font-size: 0.75rem;">

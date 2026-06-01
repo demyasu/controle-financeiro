@@ -531,12 +531,17 @@ get '/' do
   @filter_payment = params[:filter_payment]
   @filter_status = params[:filter_status]
   @filter_date_start = params[:filter_date_start]
+  @filter_date_end = params[:filter_date_end]
   @filter_valor = params[:filter_valor]
   @filter_installments = params[:filter_installments]
 
   if @filter_date_start && !@filter_date_start.empty?
     fs = Date.parse(@filter_date_start) rescue nil
     @transactions = @transactions.select { |t| t[:transaction_date] && t[:transaction_date] >= fs } if fs
+  end
+  if @filter_date_end && !@filter_date_end.empty?
+    fe = Date.parse(@filter_date_end) rescue nil
+    @transactions = @transactions.select { |t| t[:transaction_date] && t[:transaction_date] <= fe } if fe
   end
   @transactions = @transactions.select { |t| t[:description].to_s.downcase.include?(@filter_desc.downcase) } if @filter_desc && !@filter_desc.empty?
   @transactions = @transactions.select { |t| t[:transaction_type] == @filter_type } if @filter_type && !@filter_type.empty?
@@ -900,6 +905,7 @@ get '/dashboard' do
   filter_vencimento = params[:filter_vencimento]
   filter_valor = params[:filter_valor]
   filter_vencimento_start = params[:filter_vencimento_start]
+  filter_vencimento_end = params[:filter_vencimento_end]
   filter_installments = params[:filter_installments]
 
   if filter_type && !filter_type.empty?
@@ -930,6 +936,10 @@ get '/dashboard' do
   if filter_vencimento_start && !filter_vencimento_start.empty?
     vs = Date.parse(filter_vencimento_start) rescue nil
     @upcoming = @upcoming.select { |d| d[:due_date] && d[:due_date] >= vs } if vs
+  end
+  if filter_vencimento_end && !filter_vencimento_end.empty?
+    ve = Date.parse(filter_vencimento_end) rescue nil
+    @upcoming = @upcoming.select { |d| d[:due_date] && d[:due_date] <= ve } if ve
   end
   if filter_installments && !filter_installments.empty?
     fi = filter_installments.to_i

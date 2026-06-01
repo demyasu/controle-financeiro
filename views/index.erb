@@ -123,8 +123,10 @@
             </tr>
             <tr class="filter-row" style="background: #f8f9fa;">
               <td style="padding: 8px; text-align: center;"></td>
-              <td style="padding: 8px;">
-                <input type="date" class="form-control form-control-sm" name="filter_date_start" value="<%= @filter_date_start %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px;" title="Data inicial">
+              <td style="padding: 8px; white-space: nowrap;">
+                <input type="date" class="form-control form-control-sm d-inline-block" name="filter_date_start" value="<%= @filter_date_start %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px; width: auto;" title="Data inicial">
+                <span class="mx-1">~</span>
+                <input type="date" class="form-control form-control-sm d-inline-block" name="filter_date_end" value="<%= @filter_date_end %>" onchange="this.form.submit()" style="font-size: 0.75rem; padding: 4px; width: auto;" title="Data final">
               </td>
               <td style="padding: 8px;">
                 <input type="text" class="form-control form-control-sm" name="filter_desc" placeholder="Descri&ccedil;&atilde;o..." value="<%= @filter_desc %>" onchange="this.form.submit()" style="font-size: 0.8rem;">
